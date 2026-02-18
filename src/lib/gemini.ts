@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_PROMPT } from "@/config/prompts";
-import type { User, ActiveCheckout } from "./types";
+import type { User, ActiveCheckout, Tool } from "./types";
 import type { ChatMessage } from "./sheets";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
@@ -25,17 +25,29 @@ export interface BotResponse {
 /**
  * Build a minimal context block.
  *
+ * - Known tools: cataloged tools for AI to prefer and normalize names.
  * - Registration state: so the AI knows whether to ask for a name.
  * - User's own tools: so the AI can resolve "the drill" and validate returns.
- * - All checkouts: ONLY included when relevant (status queries handled by
- *   injecting this at the webhook level when needed).
+ * - All checkouts: needed for status queries and conflict detection.
  */
 function buildContext(
   user: User | null,
   myTools: ActiveCheckout[],
-  allCheckouts: ActiveCheckout[]
+  allCheckouts: ActiveCheckout[],
+  knownTools: Tool[]
 ): string {
   const lines: string[] = ["[CONTEXT]"];
+
+  // Known tools — include aliases so AI can match "dewalt drill" to "Dewalt 1223 Cordless Drill"
+  if (knownTools.length > 0) {
+    const toolsWithAliases = knownTools.map((t) => {
+      if (t.aliases && t.aliases.length > 0) {
+        return `${t.name} (aliases: ${t.aliases.join(", ")})`;
+      }
+      return t.name;
+    });
+    lines.push("Known tools: " + toolsWithAliases.join(", "));
+  }
 
   // User state — this drives registration flow.
   if (!user || !user.name) {
@@ -83,9 +95,10 @@ export async function chat(
   user: User | null,
   myTools: ActiveCheckout[],
   allCheckouts: ActiveCheckout[],
+  knownTools: Tool[],
   history: ChatMessage[]
 ): Promise<BotResponse> {
-  const context = buildContext(user, myTools, allCheckouts);
+  const context = buildContext(user, myTools, allCheckouts, knownTools);
 
   const contents: { role: string; parts: { text: string }[] }[] = [];
 

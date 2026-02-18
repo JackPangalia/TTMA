@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateTwilioSignature, twimlResponse } from "@/lib/twilio";
 import { chat } from "@/lib/gemini";
+import type { Tool } from "@/lib/types";
 import {
   getUser,
   createPendingUser,
@@ -9,11 +10,23 @@ import {
   checkinTool,
   getActiveCheckouts,
   getToolsByPhone,
+  getTools,
   saveMessage,
   getRecentMessages,
 } from "@/lib/sheets";
 
 export const dynamic = "force-dynamic";
+
+function findCatalogTool(toolName: string, knownTools: Tool[]): Tool | null {
+  const q = toolName.toLowerCase().trim();
+  return (
+    knownTools.find(
+      (t) =>
+        t.name.toLowerCase() === q ||
+        (t.aliases ?? []).some((a) => a.toLowerCase() === q)
+    ) ?? null
+  );
+}
 
 /**
  * Parse the URL-encoded form body that Twilio sends.
@@ -67,13 +80,21 @@ export async function POST(req: NextRequest) {
 
     const myTools = user?.name ? await getToolsByPhone(phone) : [];
     const allCheckouts = await getActiveCheckouts();
+    const knownTools = await getTools();
     const history = await getRecentMessages(phone);
 
     // ── 3. Save user message ──────────────────────────────────────
     await saveMessage(phone, "user", body);
 
     // ── 4. Ask the AI ─────────────────────────────────────────────
-    const response = await chat(body, user, myTools, allCheckouts, history);
+    const response = await chat(
+      body,
+      user,
+      myTools,
+      allCheckouts,
+      knownTools,
+      history
+    );
 
     // ── 5. Validate & execute action ──────────────────────────────
     let reply = response.reply;
@@ -100,9 +121,17 @@ export async function POST(req: NextRequest) {
             break;
           }
 
+          // Backend validation: tool must be in catalog
+          const catalogTool = findCatalogTool(action.tool, knownTools);
+          if (!catalogTool) {
+            reply =
+              "That tool isn't in our catalog. Managers add tools via the dashboard.";
+            break;
+          }
+
           // Backend validation: is this tool already checked out?
           const conflict = allCheckouts.find(
-            (c) => c.tool.toLowerCase() === action.tool!.toLowerCase()
+            (c) => c.tool.toLowerCase() === catalogTool.name.toLowerCase()
           );
 
           if (conflict) {
@@ -112,7 +141,7 @@ export async function POST(req: NextRequest) {
               reply = `${conflict.tool} is checked out to ${conflict.person}. Not available right now.`;
             }
           } else {
-            await checkoutTool(action.tool, user.name, phone);
+            await checkoutTool(catalogTool.name, user.name, phone);
           }
           break;
         }

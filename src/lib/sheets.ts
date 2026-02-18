@@ -1,11 +1,12 @@
 import { db } from "./firebase";
-import type { User, ActiveCheckout } from "./types";
+import type { User, ActiveCheckout, Tool } from "./types";
 
 // ── Collection references ───────────────────────────────────────────
 
 const usersCol = () => db.collection("users");
 const activeCol = () => db.collection("activeCheckouts");
 const historyCol = () => db.collection("history");
+const toolsCol = () => db.collection("tools");
 const conversationsCol = () => db.collection("conversations");
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -115,6 +116,44 @@ export async function checkinTool(
   await activeCol().doc(match.id).delete();
 
   return { found: true, person: data.person };
+}
+
+// ── Tools catalog ───────────────────────────────────────────────────
+
+/**
+ * Get all cataloged tools.
+ */
+export async function getTools(): Promise<Tool[]> {
+  const snapshot = await toolsCol().orderBy("createdAt", "asc").get();
+  return snapshot.docs.map((doc) => {
+    const d = doc.data();
+    return {
+      id: doc.id,
+      name: d.name ?? "",
+      aliases: d.aliases ?? [],
+      createdAt: d.createdAt ?? "",
+    };
+  });
+}
+
+/**
+ * Add a tool to the catalog.
+ * Returns the new tool's Firestore document ID.
+ */
+export async function addTool(name: string, aliases?: string[]): Promise<string> {
+  const ref = await toolsCol().add({
+    name: name.trim(),
+    aliases: aliases ?? [],
+    createdAt: now(),
+  });
+  return ref.id;
+}
+
+/**
+ * Remove a tool from the catalog.
+ */
+export async function deleteTool(id: string): Promise<void> {
+  await toolsCol().doc(id).delete();
 }
 
 // ── Queries ─────────────────────────────────────────────────────────

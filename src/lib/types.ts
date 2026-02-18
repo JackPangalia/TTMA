@@ -16,6 +16,15 @@ export interface PendingUser {
   registeredAt: string;
 }
 
+// ── Tools catalog ───────────────────────────────────────────────────
+
+export interface Tool {
+  id: string;
+  name: string;
+  aliases?: string[];
+  createdAt: string;
+}
+
 // ── Tool tracking (stored in Excel sheets) ──────────────────────────
 
 export interface ActiveCheckout {

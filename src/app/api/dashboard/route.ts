@@ -1,31 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/app/api/auth/route";
 import { db } from "@/lib/firebase";
+import { getTools } from "@/lib/sheets";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Check the auth cookie before serving data.
- */
-function isAuthenticated(req: NextRequest): boolean {
-  const token = req.cookies.get("ttma-auth")?.value ?? "";
-  if (!token) return false;
-  try {
-    return verifyToken(token);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * GET /api/dashboard?tab=active|history|users
+ * GET /api/dashboard?tab=active|history|users|tools
  * Returns JSON data for the dashboard tables.
  */
 export async function GET(req: NextRequest) {
-  if (!isAuthenticated(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const tab = req.nextUrl.searchParams.get("tab") ?? "active";
 
   try {
@@ -58,6 +41,11 @@ export async function GET(req: NextRequest) {
           .filter((doc) => doc.data().name)
           .map((doc) => doc.data());
         return NextResponse.json({ rows });
+      }
+
+      case "tools": {
+        const tools = await getTools();
+        return NextResponse.json({ rows: tools });
       }
 
       default:
