@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTools, addTool } from "@/lib/sheets";
+import { getRoleFromRequest } from "@/app/api/auth/route";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/tools
- * Returns all cataloged tools.
+ * Returns all cataloged tools. Accessible by any authenticated user.
  */
 export async function GET() {
   try {
@@ -22,10 +23,15 @@ export async function GET() {
 
 /**
  * POST /api/tools
- * Adds a new tool to the catalog.
+ * Adds a new tool to the catalog. Admin only.
  * Body: { name: string, aliases?: string[] }
  */
 export async function POST(req: NextRequest) {
+  const role = getRoleFromRequest(req);
+  if (role !== "admin") {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  }
+
   try {
     const body = await req.json();
     const name = (body.name ?? "").toString().trim();

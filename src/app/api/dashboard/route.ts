@@ -1,34 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { getTools } from "@/lib/sheets";
+import { getRoleFromRequest } from "@/app/api/auth/route";
 
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/dashboard?tab=active|history|users|tools
- * Returns JSON data for the dashboard tables.
+ * GET /api/dashboard?view=log|users|tools
+ *
+ * - log:   merges activeCheckouts (status=OUT) and history (status=RETURNED)
+ * - users: registered workers
+ * - tools: tool catalog (admin only for writes, but readable by all)
  */
 export async function GET(req: NextRequest) {
-  const tab = req.nextUrl.searchParams.get("tab") ?? "active";
+  const role = getRoleFromRequest(req);
+  if (!role) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const view = req.nextUrl.searchParams.get("view") ?? "log";
 
   try {
-    switch (tab) {
-      case "active": {
-        const snapshot = await db
-          .collection("activeCheckouts")
-          .orderBy("checkedOutAt", "desc")
-          .get();
-        const rows = snapshot.docs.map((doc) => doc.data());
-        return NextResponse.json({ rows });
-      }
+    switch (view) {
+      case "log": {
+        const [activeSnap, historySnap] = await Promise.all([
+          db.collection("activeCheckouts").orderBy("checkedOutAt", "desc").get(),
+          db.collection("history").orderBy("returnedAt", "desc").limit(200).get(),
+        ]);
 
-      case "history": {
-        const snapshot = await db
-          .collection("history")
-          .orderBy("returnedAt", "desc")
-          .limit(100)
-          .get();
-        const rows = snapshot.docs.map((doc) => doc.data());
+        const activeRows = activeSnap.docs.map((doc) => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            tool: d.tool ?? "",
+            person: d.person ?? "",
+            phone: d.phone ?? "",
+            status: "OUT" as const,
+            checkedOutAt: d.checkedOutAt ?? "",
+            returnedAt: null,
+          };
+        });
+
+        const historyRows = historySnap.docs.map((doc) => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            tool: d.tool ?? "",
+            person: d.person ?? "",
+            phone: d.phone ?? "",
+            status: "RETURNED" as const,
+            checkedOutAt: d.checkedOutAt ?? "",
+            returnedAt: d.returnedAt ?? "",
+          };
+        });
+
+        // Active rows first, then history rows.
+        const rows = [...activeRows, ...historyRows];
         return NextResponse.json({ rows });
       }
 
@@ -39,7 +66,11 @@ export async function GET(req: NextRequest) {
           .get();
         const rows = snapshot.docs
           .filter((doc) => doc.data().name)
-          .map((doc) => doc.data());
+          .map((doc) => ({
+            phone: doc.data().phone ?? doc.id,
+            name: doc.data().name ?? "",
+            registeredAt: doc.data().registeredAt ?? "",
+          }));
         return NextResponse.json({ rows });
       }
 
@@ -50,7 +81,7 @@ export async function GET(req: NextRequest) {
 
       default:
         return NextResponse.json(
-          { error: "Invalid tab parameter" },
+          { error: "Invalid view parameter" },
           { status: 400 }
         );
     }

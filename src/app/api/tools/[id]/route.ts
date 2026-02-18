@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteTool } from "@/lib/sheets";
+import { getRoleFromRequest } from "@/app/api/auth/route";
 
 export const dynamic = "force-dynamic";
 
 /**
  * DELETE /api/tools/[id]
- * Removes a tool from the catalog.
+ * Removes a tool from the catalog. Admin only.
  */
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const role = getRoleFromRequest(req);
+  if (role !== "admin") {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  }
+
   try {
     const { id } = await params;
     if (!id) {

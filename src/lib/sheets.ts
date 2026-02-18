@@ -156,6 +156,43 @@ export async function deleteTool(id: string): Promise<void> {
   await toolsCol().doc(id).delete();
 }
 
+// ── Admin: force check-in by doc ID ─────────────────────────────────
+
+/**
+ * Admin force-return: check in a tool by its activeCheckouts doc ID.
+ * Moves the record to history and deletes from activeCheckouts.
+ */
+export async function checkinToolById(
+  docId: string
+): Promise<{ found: boolean; tool?: string; person?: string }> {
+  const ref = activeCol().doc(docId);
+  const doc = await ref.get();
+
+  if (!doc.exists) {
+    return { found: false };
+  }
+
+  const data = doc.data()!;
+
+  await historyCol().add({
+    tool: data.tool,
+    person: data.person,
+    phone: data.phone,
+    checkedOutAt: data.checkedOutAt,
+    returnedAt: now(),
+  });
+
+  await ref.delete();
+
+  return { found: true, tool: data.tool, person: data.person };
+}
+
+// ── Admin: delete user ──────────────────────────────────────────────
+
+export async function deleteUser(phone: string): Promise<void> {
+  await usersCol().doc(phone).delete();
+}
+
 // ── Queries ─────────────────────────────────────────────────────────
 
 /**
