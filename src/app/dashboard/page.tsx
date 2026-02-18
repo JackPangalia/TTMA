@@ -7,7 +7,7 @@ import Link from "next/link";
 // ── Types ───────────────────────────────────────────────────────────
 
 type Role = "admin" | "worker";
-type Tab = "log" | "tools" | "crew" | "checkout";
+type Tab = "log" | "tools" | "crew";
 type Filter = "active" | "returned" | "all";
 
 interface LogRow {
@@ -50,7 +50,7 @@ export default function DashboardPage() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-100 dark:bg-zinc-950">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
       </div>
     );
@@ -98,19 +98,14 @@ function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-100 px-4 dark:bg-zinc-950">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
       <div className="w-full max-w-sm animate-fade-in">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <svg className="h-7 w-7 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">TTMA Dashboard</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Enter your crew password</p>
+          <h1 className="text-lg font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">TTMA</h1>
+          <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Enter crew password</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -120,7 +115,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoFocus
-            className="mb-3 w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-amber-500 dark:focus:ring-amber-500/20"
+            className="mb-3 w-full border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:ring-1 focus:ring-accent-muted dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:ring-accent-muted"
           />
           {error && (
             <p className="mb-3 text-sm text-red-500 animate-fade-in">{error}</p>
@@ -128,7 +123,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: Role) => void }) {
           <button
             type="submit"
             disabled={!password.trim() || loading}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="w-full bg-zinc-900 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
@@ -171,16 +166,6 @@ const ALL_TABS: { id: Tab; label: string; adminOnly: boolean; icon: React.ReactN
       </svg>
     ),
   },
-  {
-    id: "checkout",
-    label: "Checkout",
-    adminOnly: true,
-    icon: (
-      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-      </svg>
-    ),
-  },
 ];
 
 // ── Dashboard ───────────────────────────────────────────────────────
@@ -189,6 +174,16 @@ function Dashboard({ role, onLogout }: { role: Role; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("log");
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 8);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const visibleTabs = ALL_TABS.filter((t) => !t.adminOnly || role === "admin");
 
@@ -198,26 +193,21 @@ function Dashboard({ role, onLogout }: { role: Role; onLogout: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+      <header className={`sticky top-0 z-20 transition-colors duration-200 ${scrolled ? "border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80" : ""}`}>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5 sm:px-6">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2.5 transition hover:opacity-80">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
-                <svg className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
-                </svg>
-              </div>
-              <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">TTMA</span>
+            <Link href="/" className="text-sm font-bold uppercase tracking-wider text-zinc-900 hover:opacity-80 dark:text-zinc-100">
+              TTMA
             </Link>
-            <span className="hidden text-sm text-zinc-300 sm:inline dark:text-zinc-700">/</span>
-            <span className="hidden text-sm font-medium text-zinc-500 sm:inline dark:text-zinc-400">Dashboard</span>
+            <span className="hidden text-xs text-zinc-300 sm:inline dark:text-zinc-700">/</span>
+            <span className="hidden text-xs font-medium uppercase tracking-wide text-zinc-500 sm:inline dark:text-zinc-400">Dashboard</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            <span className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
               role === "admin"
-                ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
+                ? "bg-accent-muted text-accent-fg dark:bg-accent-dim dark:text-accent"
                 : "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
             }`}>
               {role === "admin" ? "Admin" : "Viewer"}
@@ -229,7 +219,7 @@ function Dashboard({ role, onLogout }: { role: Role; onLogout: () => void }) {
             )}
             <button
               onClick={refresh}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-300 bg-zinc-100 text-zinc-600 transition hover:border-zinc-400 hover:bg-zinc-200 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+              className="flex h-8 w-8 items-center justify-center border border-zinc-300 bg-zinc-100 text-zinc-600 hover:border-zinc-400 hover:bg-zinc-200 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
               title="Refresh"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -242,7 +232,7 @@ function Dashboard({ role, onLogout }: { role: Role; onLogout: () => void }) {
                 document.cookie = "ttma-auth=; path=/; max-age=0";
                 onLogout();
               }}
-              className="flex h-9 items-center rounded-lg border border-zinc-300 bg-zinc-100 px-3 text-xs font-medium text-zinc-600 transition hover:border-zinc-400 hover:bg-zinc-200 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+              className="flex h-8 items-center border border-zinc-300 bg-zinc-100 px-2.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:border-zinc-400 hover:bg-zinc-200 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
             >
               Logout
             </button>
@@ -251,30 +241,30 @@ function Dashboard({ role, onLogout }: { role: Role; onLogout: () => void }) {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        {/* Tabs */}
-        <div className="mb-4 flex gap-1 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
-          {visibleTabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                tab === t.id
-                  ? "bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900"
-                  : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              {t.icon}
-              <span className="hidden sm:inline">{t.label}</span>
-            </button>
-          ))}
-        </div>
+        {role === "admin" && (
+          <div className="mb-4 flex border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            {visibleTabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex flex-1 items-center justify-center gap-2 border-r border-zinc-200 px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide last:border-r-0 dark:border-zinc-800 ${
+                  tab === t.id
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                    : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                {t.icon}
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Tab content */}
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="overflow-hidden border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
           {tab === "log" && <LogView role={role} refreshKey={refreshKey} onRefreshed={() => setLastUpdatedLabel("just now")} />}
           {tab === "tools" && <ToolsManager refreshKey={refreshKey} />}
           {tab === "crew" && <CrewManager refreshKey={refreshKey} />}
-          {tab === "checkout" && <ManualCheckout onCheckout={refresh} />}
         </div>
       </div>
     </div>
@@ -349,14 +339,14 @@ function LogView({
     <div>
       {/* Filter bar + search */}
       <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800">
-        <div className="flex gap-1 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+        <div className="flex border border-zinc-200 dark:border-zinc-700">
           {(["active", "returned", "all"] as Filter[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition ${
+              className={`border-r border-zinc-200 px-3 py-2 text-[10px] font-medium uppercase tracking-wide last:border-r-0 dark:border-zinc-700 ${
                 filter === f
-                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                  ? "bg-zinc-900 text-white dark:bg-zinc-700 dark:text-zinc-100"
                   : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
               }`}
             >
@@ -376,7 +366,7 @@ function LogView({
             placeholder="Search tool or person..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-1.5 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-400/20 sm:w-56 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-amber-500 dark:focus:bg-zinc-800 dark:focus:ring-amber-500/20"
+            className="w-full border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-3 text-xs text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:bg-white focus:ring-1 focus:ring-accent-muted sm:w-56 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:bg-zinc-800 dark:focus:ring-accent-muted"
           />
         </div>
       </div>
@@ -398,7 +388,7 @@ function LogView({
         />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full min-w-[600px] text-left">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-800">
                 <th className={thClass}>Tool</th>
@@ -418,14 +408,14 @@ function LogView({
                   <td className={`${tdClass} text-zinc-600 dark:text-zinc-300`}>{row.person}</td>
                   <td className={tdClass}>
                     {row.status === "OUT" ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse-dot" />
-                        OUT
+                      <span className="inline-flex items-center gap-1.5 bg-accent-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-fg dark:bg-accent-dim dark:text-accent">
+                        <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-dot" />
+                        Out
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                      <span className="inline-flex items-center gap-1.5 bg-emerald-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        RETURNED
+                        Returned
                       </span>
                     )}
                   </td>
@@ -443,7 +433,7 @@ function LogView({
                         <button
                           onClick={() => handleForceReturn(row.id)}
                           disabled={returningId === row.id}
-                          className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-red-500/50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                          className="border border-zinc-200 bg-white px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-red-500/50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
                         >
                           {returningId === row.id ? "..." : "Return"}
                         </button>
@@ -532,8 +522,8 @@ function ToolsManager({ refreshKey }: { refreshKey: number }) {
   return (
     <div>
       {/* Add form */}
-      <div className="border-b border-zinc-200 bg-zinc-50/50 p-4 sm:p-5 dark:border-zinc-800 dark:bg-zinc-800/20">
-        <form onSubmit={handleAdd} className="flex items-center gap-2">
+      <div className="border-b border-zinc-200 bg-zinc-50/50 p-3 sm:p-4 dark:border-zinc-800 dark:bg-zinc-800/20">
+        <form onSubmit={handleAdd} className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -544,13 +534,13 @@ function ToolsManager({ refreshKey }: { refreshKey: number }) {
               placeholder="Add a tool — e.g. Dewalt DCD771 Drill"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-zinc-300 bg-white py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-amber-500 dark:focus:ring-amber-500/20"
+              className="w-full border border-zinc-300 bg-white py-2.5 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:ring-1 focus:ring-accent-muted dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:ring-accent-muted"
             />
           </div>
           <button
             type="submit"
             disabled={!name.trim() || adding}
-            className="shrink-0 rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="shrink-0 bg-zinc-900 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {adding ? "Adding..." : "Add Tool"}
           </button>
@@ -572,11 +562,11 @@ function ToolsManager({ refreshKey }: { refreshKey: number }) {
           {tools.map((tool, i) => (
             <div
               key={tool.id || i}
-              className="flex items-center justify-between px-4 py-3 transition hover:bg-zinc-50 sm:px-5 dark:hover:bg-zinc-800/30"
+              className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 sm:px-5 dark:hover:bg-zinc-800/30"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                  <svg className="h-4 w-4 text-zinc-500 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="flex h-7 w-7 items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+                  <svg className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
                   </svg>
                 </div>
@@ -588,7 +578,7 @@ function ToolsManager({ refreshKey }: { refreshKey: number }) {
               <button
                 onClick={() => handleDelete(tool.id)}
                 disabled={deletingId === tool.id}
-                className="rounded-md px-2.5 py-1 text-xs text-zinc-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                className="px-2 py-1 text-[10px] uppercase tracking-wide text-zinc-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
               >
                 {deletingId === tool.id ? "Removing..." : "Remove"}
               </button>
@@ -650,10 +640,10 @@ function CrewManager({ refreshKey }: { refreshKey: number }) {
       {users.map((user, i) => (
         <div
           key={user.phone || i}
-          className="flex items-center justify-between px-4 py-3 transition hover:bg-zinc-50 sm:px-5 dark:hover:bg-zinc-800/30"
+          className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 sm:px-5 dark:hover:bg-zinc-800/30"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-xs font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+            <div className="flex h-7 w-7 items-center justify-center bg-zinc-200 text-[10px] font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
               {getInitials(user.name)}
             </div>
             <div>
@@ -664,7 +654,7 @@ function CrewManager({ refreshKey }: { refreshKey: number }) {
           <button
             onClick={() => handleDelete(user.phone)}
             disabled={deletingPhone === user.phone}
-            className="rounded-md px-2.5 py-1 text-xs text-zinc-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+            className="px-2 py-1 text-[10px] uppercase tracking-wide text-zinc-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
           >
             {deletingPhone === user.phone ? "Removing..." : "Remove"}
           </button>
@@ -674,216 +664,13 @@ function CrewManager({ refreshKey }: { refreshKey: number }) {
   );
 }
 
-// ── Manual Checkout (redesigned) ────────────────────────────────────
-
-function ManualCheckout({ onCheckout }: { onCheckout: () => void }) {
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [tools, setTools] = useState<ToolRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedPhone, setSelectedPhone] = useState("");
-  const [selectedTool, setSelectedTool] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [recentActions, setRecentActions] = useState<{ text: string; ok: boolean }[]>([]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/dashboard?view=users").then((r) => r.json()),
-      fetch("/api/dashboard?view=tools").then((r) => r.json()),
-    ])
-      .then(([uData, tData]) => {
-        setUsers(uData.rows ?? []);
-        setTools(tData.rows ?? []);
-      })
-      .catch(() => console.error("Failed to fetch data"))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedPhone || !selectedTool || submitting) return;
-
-    const user = users.find((u) => u.phone === selectedPhone);
-    if (!user) return;
-
-    setSubmitting(true);
-
-    try {
-      const res = await fetch("/api/admin/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool: selectedTool,
-          person: user.name,
-          phone: user.phone,
-        }),
-      });
-
-      if (res.ok) {
-        setRecentActions((prev) => [
-          { text: `${selectedTool} → ${user.name}`, ok: true },
-          ...prev.slice(0, 4),
-        ]);
-        setSelectedTool("");
-        onCheckout();
-      } else {
-        const data = await res.json();
-        setRecentActions((prev) => [
-          { text: data.error || "Failed to check out", ok: false },
-          ...prev.slice(0, 4),
-        ]);
-      }
-    } catch {
-      setRecentActions((prev) => [
-        { text: "Connection error", ok: false },
-        ...prev.slice(0, 4),
-      ]);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  if (loading) return <LoadingState />;
-
-  const selectedUser = users.find((u) => u.phone === selectedPhone);
-
-  return (
-    <div>
-      {/* Form */}
-      <div className="border-b border-zinc-200 p-5 sm:p-6 dark:border-zinc-800">
-        <h3 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-          Check out a tool on behalf of a worker
-        </h3>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Worker selection — card-style */}
-          <div>
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-              Worker
-            </label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {users.map((u) => (
-                <button
-                  key={u.phone}
-                  type="button"
-                  onClick={() => setSelectedPhone(u.phone === selectedPhone ? "" : u.phone)}
-                  className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition ${
-                    selectedPhone === u.phone
-                      ? "border-amber-400 bg-amber-50 ring-2 ring-amber-400/20 dark:border-amber-500 dark:bg-amber-500/10 dark:ring-amber-500/20"
-                      : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
-                  }`}
-                >
-                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                    selectedPhone === u.phone
-                      ? "bg-amber-200 text-amber-800 dark:bg-amber-500/30 dark:text-amber-300"
-                      : "bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"
-                  }`}>
-                    {getInitials(u.name)}
-                  </div>
-                  <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {u.name || "Unnamed"}
-                  </span>
-                </button>
-              ))}
-            </div>
-            {users.length === 0 && (
-              <p className="mt-2 text-sm text-zinc-400">No workers registered yet.</p>
-            )}
-          </div>
-
-          {/* Tool selection — card-style */}
-          <div>
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-              Tool
-            </label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {tools.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setSelectedTool(t.name === selectedTool ? "" : t.name)}
-                  className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition ${
-                    selectedTool === t.name
-                      ? "border-amber-400 bg-amber-50 ring-2 ring-amber-400/20 dark:border-amber-500 dark:bg-amber-500/10 dark:ring-amber-500/20"
-                      : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
-                  }`}
-                >
-                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                    selectedTool === t.name
-                      ? "bg-amber-200 dark:bg-amber-500/30"
-                      : "bg-zinc-100 dark:bg-zinc-700"
-                  }`}>
-                    <svg className={`h-3.5 w-3.5 ${selectedTool === t.name ? "text-amber-800 dark:text-amber-300" : "text-zinc-500 dark:text-zinc-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z" />
-                    </svg>
-                  </div>
-                  <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {t.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-            {tools.length === 0 && (
-              <p className="mt-2 text-sm text-zinc-400">No tools added yet. Add tools in the Tools tab.</p>
-            )}
-          </div>
-
-          {/* Submit */}
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              type="submit"
-              disabled={!selectedPhone || !selectedTool || submitting}
-              className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              {submitting
-                ? "Checking out..."
-                : selectedPhone && selectedTool
-                  ? `Check out ${selectedTool} to ${selectedUser?.name ?? "..."}`
-                  : "Select worker & tool"}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Recent actions feed */}
-      {recentActions.length > 0 && (
-        <div className="px-5 py-3">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            Recent
-          </p>
-          <div className="space-y-1.5">
-            {recentActions.map((action, i) => (
-              <div
-                key={i}
-                className={`flex items-center gap-2 text-sm animate-fade-in ${
-                  action.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
-                }`}
-              >
-                {action.ok ? (
-                  <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                ) : (
-                  <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                  </svg>
-                )}
-                {action.text}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Shared Components ───────────────────────────────────────────────
 
 const thClass =
-  "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500";
-const tdClass = "px-4 py-3 text-sm";
+  "px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-zinc-400 sm:px-4 sm:py-3 sm:text-xs dark:text-zinc-500";
+const tdClass = "px-3 py-2.5 text-xs sm:px-4 sm:py-3 sm:text-sm";
 const trClass =
-  "border-t border-zinc-100 transition hover:bg-zinc-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/30";
+  "border-t border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/30";
 
 function LoadingState() {
   return (

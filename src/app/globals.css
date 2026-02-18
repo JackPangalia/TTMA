@@ -3,11 +3,53 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-amber-450: #f5a623;
+  --color-accent: oklch(0% 0 0);
+  --color-accent-dim: oklch(100% 0 0 / 0.10);
+  --color-accent-muted: oklch(0% 0 0 / 0.06);
+  --color-accent-fg: oklch(0% 0 0);
+}
+
+.dark {
+  --color-accent: oklch(100% 0 0);
+  --color-accent-dim: oklch(100% 0 0 / 0.10);
+  --color-accent-muted: oklch(100% 0 0 / 0.06);
+  --color-accent-fg: oklch(100% 0 0);
 }
 
 ::selection {
-  background-color: #f5a62340;
+  background-color: oklch(0% 0 0 / 0.15);
+}
+.dark ::selection {
+  background-color: oklch(100% 0 0 / 0.20);
+}
+
+/* Industrial grid background */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, oklch(55% 0 0 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(55% 0 0 / 0.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.dark .bg-grid {
+  background-image:
+    linear-gradient(to right, oklch(75% 0 0 / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(75% 0 0 / 0.04) 1px, transparent 1px);
+}
+
+/* Noise grain overlay */
+.bg-noise::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.3;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+.dark .bg-noise::after {
+  opacity: 0.15;
 }
 
 ::-webkit-scrollbar {
@@ -21,7 +63,6 @@
 
 ::-webkit-scrollbar-thumb {
   background: #a1a1aa;
-  border-radius: 3px;
 }
 
 .dark ::-webkit-scrollbar-thumb {

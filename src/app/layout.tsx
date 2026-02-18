@@ -22,8 +22,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-white text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
-        <ThemeProvider>{children}</ThemeProvider>
+      <body className="bg-noise bg-grid min-h-screen bg-white text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+        <ThemeProvider>
+          <div className="relative z-10">{children}</div>
+        </ThemeProvider>
       </body>
     </html>
   );
