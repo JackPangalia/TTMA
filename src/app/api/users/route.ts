@@ -5,11 +5,16 @@ import { deleteUser } from "@/lib/sheets";
 export const dynamic = "force-dynamic";
 
 /**
- * DELETE /api/users?phone=whatsapp:+1234567890
+ * DELETE /api/users?tenantId=xxx&phone=whatsapp:+1234567890
  * Admin-only: removes a registered worker.
  */
 export async function DELETE(req: NextRequest) {
-  const role = getRoleFromRequest(req);
+  const tenantId = req.nextUrl.searchParams.get("tenantId") ?? "";
+  if (!tenantId) {
+    return NextResponse.json({ error: "tenantId is required" }, { status: 400 });
+  }
+
+  const role = await getRoleFromRequest(req, tenantId);
   if (role !== "admin") {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
@@ -21,7 +26,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Phone is required" }, { status: 400 });
     }
 
-    await deleteUser(phone);
+    await deleteUser(tenantId, phone);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Delete user error:", error);

@@ -5,12 +5,16 @@ import { getRoleFromRequest } from "@/app/api/auth/route";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/tools
- * Returns all cataloged tools. Accessible by any authenticated user.
+ * GET /api/tools?tenantId=xxx
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const tenantId = req.nextUrl.searchParams.get("tenantId") ?? "";
+  if (!tenantId) {
+    return NextResponse.json({ error: "tenantId is required" }, { status: 400 });
+  }
+
   try {
-    const tools = await getTools();
+    const tools = await getTools(tenantId);
     return NextResponse.json({ tools });
   } catch (error) {
     console.error("Tools API error:", error);
@@ -23,21 +27,28 @@ export async function GET() {
 
 /**
  * POST /api/tools
- * Adds a new tool to the catalog. Admin only.
- * Body: { name: string, aliases?: string[] }
+ * Body: { tenantId: string, name: string, aliases?: string[] }
+ * Admin only.
  */
 export async function POST(req: NextRequest) {
-  const role = getRoleFromRequest(req);
-  if (role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
-
   try {
     const body = await req.json();
+    const tenantId = (body.tenantId ?? "").toString().trim();
+
+    if (!tenantId) {
+      return NextResponse.json({ error: "tenantId is required" }, { status: 400 });
+    }
+
+    const role = await getRoleFromRequest(req, tenantId);
+    if (role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
     const name = (body.name ?? "").toString().trim();
     const aliases = Array.isArray(body.aliases)
       ? body.aliases.map((a: unknown) => String(a).trim()).filter(Boolean)
       : undefined;
+    const group = body.group ? body.group.toString().trim() : null;
 
     if (!name) {
       return NextResponse.json(
@@ -46,8 +57,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const id = await addTool(name, aliases);
-    return NextResponse.json({ id, name, aliases: aliases ?? [] });
+    const id = await addTool(tenantId, name, aliases, group);
+    return NextResponse.json({ id, name, aliases: aliases ?? [], group });
   } catch (error) {
     console.error("Tools API error:", error);
     return NextResponse.json(

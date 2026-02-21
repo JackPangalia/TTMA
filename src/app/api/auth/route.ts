@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-
-const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD ?? "";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
+import { getTenantById } from "@/lib/tenants";
 
 export type Role = "admin" | "worker";
 
-function generateToken(role: Role): string {
-  const secret = role === "admin" ? ADMIN_PASSWORD : DASHBOARD_PASSWORD;
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD ?? "";
+
+function generateToken(role: Role, secret: string): string {
   return crypto
     .createHmac("sha256", secret)
     .update(`ttma-${role}`)
@@ -15,14 +14,19 @@ function generateToken(role: Role): string {
 }
 
 /**
- * Determine the role encoded in a cookie token.
- * Returns null if the token doesn't match either role.
+ * Determine the role encoded in a cookie token for a given tenant.
  */
-export function verifyRole(token: string): Role | null {
-  if (!token) return null;
+export async function verifyRoleForTenant(
+  token: string,
+  tenantId: string
+): Promise<Role | null> {
+  if (!token || !tenantId) return null;
 
-  if (ADMIN_PASSWORD) {
-    const adminToken = generateToken("admin");
+  const tenant = await getTenantById(tenantId);
+  if (!tenant || tenant.status !== "active") return null;
+
+  if (tenant.adminPassword) {
+    const adminToken = generateToken("admin", tenant.adminPassword);
     if (
       token.length === adminToken.length &&
       crypto.timingSafeEqual(Buffer.from(token), Buffer.from(adminToken))
@@ -31,8 +35,8 @@ export function verifyRole(token: string): Role | null {
     }
   }
 
-  if (DASHBOARD_PASSWORD) {
-    const workerToken = generateToken("worker");
+  if (tenant.dashboardPassword) {
+    const workerToken = generateToken("worker", tenant.dashboardPassword);
     if (
       token.length === workerToken.length &&
       crypto.timingSafeEqual(Buffer.from(token), Buffer.from(workerToken))
@@ -45,36 +49,65 @@ export function verifyRole(token: string): Role | null {
 }
 
 /**
- * Read the role from the request cookie. Returns null if not authenticated.
+ * Read the role from the request cookie for a given tenant.
  */
-export function getRoleFromRequest(req: NextRequest): Role | null {
+export async function getRoleFromRequest(
+  req: NextRequest,
+  tenantId: string
+): Promise<Role | null> {
   const token = req.cookies.get("ttma-auth")?.value ?? "";
-  return verifyRole(token);
+  return verifyRoleForTenant(token, tenantId);
+}
+
+/**
+ * Verify the super-admin token from cookie.
+ */
+export function verifySuperAdmin(token: string): boolean {
+  if (!token || !SUPER_ADMIN_PASSWORD) return false;
+  const expected = crypto
+    .createHmac("sha256", SUPER_ADMIN_PASSWORD)
+    .update("ttma-superadmin")
+    .digest("hex");
+  if (token.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+}
+
+export function isSuperAdminRequest(req: NextRequest): boolean {
+  const token = req.cookies.get("ttma-superadmin")?.value ?? "";
+  return verifySuperAdmin(token);
 }
 
 /**
  * POST /api/auth
- * Accepts { password: string }.
- * Checks against ADMIN_PASSWORD first, then DASHBOARD_PASSWORD.
- * Sets a cookie with the matching role on success.
+ * Accepts { password: string, tenantId: string }.
+ * Checks against the tenant's admin and dashboard passwords.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const password = body.password ?? "";
+    const tenantId = body.tenantId ?? "";
 
-    if (!DASHBOARD_PASSWORD && !ADMIN_PASSWORD) {
+    if (!tenantId) {
       return NextResponse.json(
-        { error: "No passwords configured" },
-        { status: 500 }
+        { error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const tenant = await getTenantById(tenantId);
+    if (!tenant || tenant.status !== "active") {
+      return NextResponse.json(
+        { error: "Invalid tenant" },
+        { status: 404 }
       );
     }
 
     let role: Role | null = null;
 
-    if (ADMIN_PASSWORD && password === ADMIN_PASSWORD) {
+    if (tenant.adminPassword && password === tenant.adminPassword) {
       role = "admin";
-    } else if (DASHBOARD_PASSWORD && password === DASHBOARD_PASSWORD) {
+    } else if (tenant.dashboardPassword && password === tenant.dashboardPassword) {
       role = "worker";
     }
 
@@ -85,7 +118,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const token = generateToken(role);
+    const secret = role === "admin" ? tenant.adminPassword : tenant.dashboardPassword;
+    const token = generateToken(role, secret);
 
     const response = NextResponse.json({ ok: true, role });
     response.cookies.set("ttma-auth", token, {
@@ -106,11 +140,16 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET /api/auth
- * Returns the current role from the cookie, or 401 if not authenticated.
+ * GET /api/auth?tenantId=xxx
+ * Returns the current role from the cookie for the given tenant.
  */
 export async function GET(req: NextRequest) {
-  const role = getRoleFromRequest(req);
+  const tenantId = req.nextUrl.searchParams.get("tenantId") ?? "";
+  if (!tenantId) {
+    return NextResponse.json({ error: "tenantId is required" }, { status: 400 });
+  }
+
+  const role = await getRoleFromRequest(req, tenantId);
   if (!role) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }

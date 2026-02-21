@@ -7,16 +7,22 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/admin/checkout
  * Admin manually checks out a tool on behalf of a worker.
- * Body: { tool: string, person: string, phone: string }
+ * Body: { tenantId: string, tool: string, person: string, phone: string }
  */
 export async function POST(req: NextRequest) {
-  const role = getRoleFromRequest(req);
-  if (role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
-
   try {
     const body = await req.json();
+    const tenantId = (body.tenantId ?? "").toString().trim();
+
+    if (!tenantId) {
+      return NextResponse.json({ error: "tenantId is required" }, { status: 400 });
+    }
+
+    const role = await getRoleFromRequest(req, tenantId);
+    if (role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
     const tool = (body.tool ?? "").toString().trim();
     const person = (body.person ?? "").toString().trim();
     const phone = (body.phone ?? "").toString().trim();
@@ -28,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await checkoutTool(tool, person, phone);
+    await checkoutTool(tenantId, tool, person, phone, null);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Admin checkout error:", error);

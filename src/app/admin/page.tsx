@@ -1,0 +1,655 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+interface Tenant {
+  id: string;
+  slug: string;
+  name: string;
+  twilioNumber: string;
+  adminPassword: string;
+  dashboardPassword: string;
+  groupsEnabled: boolean;
+  groupNames: string[];
+  createdAt: string;
+  status: "active" | "disabled";
+}
+
+export default function AdminPage() {
+  const [authed, setAuthed] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/tenants")
+      .then((r) => {
+        if (r.ok) {
+          setAuthed(true);
+          return r.json();
+        }
+        return null;
+      })
+      .then((data) => {
+        if (data?.tenants) setTenants(data.tenants);
+      })
+      .finally(() => setChecking(false));
+  }, []);
+
+  const fetchTenants = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/tenants");
+      if (res.ok) {
+        const data = await res.json();
+        setTenants(data.tenants ?? []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!password.trim() || loginLoading) return;
+    setLoginLoading(true);
+    setLoginError("");
+    try {
+      const res = await fetch("/api/admin/tenants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", password }),
+      });
+      if (res.ok) {
+        setAuthed(true);
+        fetchTenants();
+      } else {
+        const data = await res.json();
+        setLoginError(data.error || "Incorrect password");
+      }
+    } catch {
+      setLoginError("Connection error");
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+      </div>
+    );
+  }
+
+  if (!authed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="absolute right-4 top-4">
+          <ThemeToggle />
+        </div>
+        <div className="w-full max-w-sm animate-fade-in">
+          <div className="mb-8 text-center">
+            <h1 className="text-lg font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+              TTMA Admin
+            </h1>
+            <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Super-admin access
+            </p>
+          </div>
+          <form onSubmit={handleLogin}>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoFocus
+              className="mb-3 w-full border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:ring-1 focus:ring-accent-muted dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:ring-accent-muted"
+            />
+            {loginError && (
+              <p className="mb-3 text-sm text-red-500 animate-fade-in">{loginError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={!password.trim() || loginLoading}
+              className="w-full bg-zinc-900 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              {loginLoading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen">
+      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2.5 sm:px-6">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+              TTMA
+            </span>
+            <span className="text-xs text-zinc-300 dark:text-zinc-700">/</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Admin
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchTenants}
+              className="flex h-8 w-8 items-center justify-center border border-zinc-300 bg-zinc-100 text-zinc-600 hover:border-zinc-400 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+              title="Refresh"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+              </svg>
+            </button>
+            <ThemeToggle />
+            <button
+              onClick={() => {
+                document.cookie = "ttma-superadmin=; path=/; max-age=0";
+                setAuthed(false);
+              }}
+              className="flex h-8 items-center border border-zinc-300 bg-zinc-100 px-2.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:border-zinc-400 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            Tenants{" "}
+            {tenants.length > 0 && (
+              <span className="ml-1 text-zinc-400 dark:text-zinc-600">
+                {tenants.length}
+              </span>
+            )}
+          </h2>
+          <button
+            onClick={() => {
+              setShowCreate(!showCreate);
+              setEditingId(null);
+            }}
+            className="bg-zinc-900 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {showCreate ? "Cancel" : "Add Tenant"}
+          </button>
+        </div>
+
+        {showCreate && (
+          <CreateTenantForm
+            onCreated={() => {
+              setShowCreate(false);
+              fetchTenants();
+            }}
+          />
+        )}
+
+        {loading && tenants.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+          </div>
+        ) : tenants.length === 0 ? (
+          <div className="border border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            No tenants yet. Create your first one.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tenants.map((t) => (
+              <TenantRow
+                key={t.id}
+                tenant={t}
+                expanded={editingId === t.id}
+                onToggle={() => setEditingId(editingId === t.id ? null : t.id)}
+                onUpdated={fetchTenants}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Create Tenant Form ──────────────────────────────────────────────
+
+function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [twilioNumber, setTwilioNumber] = useState("");
+  const [adminPw, setAdminPw] = useState("");
+  const [dashPw, setDashPw] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  function handleSlugChange(value: string) {
+    setSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-"));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/tenants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          slug: slug.trim(),
+          name: name.trim(),
+          twilioNumber: twilioNumber.trim(),
+          adminPassword: adminPw,
+          dashboardPassword: dashPw,
+        }),
+      });
+      if (res.ok) {
+        onCreated();
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to create tenant");
+      }
+    } catch {
+      setError("Connection error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputClass =
+    "w-full border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:ring-1 focus:ring-accent-muted dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:ring-accent-muted";
+  const labelClass =
+    "block text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1";
+
+  return (
+    <div className="mb-4 border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>Company Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Acme Construction"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>URL Slug</label>
+            <div className="flex items-center gap-0">
+              <span className="border border-r-0 border-zinc-300 bg-zinc-100 px-2 py-2 text-xs text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500">
+                /dashboard/
+              </span>
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => handleSlugChange(e.target.value)}
+                placeholder="acme-construction"
+                className={`${inputClass} rounded-l-none`}
+              />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Twilio WhatsApp Number</label>
+            <input
+              type="text"
+              value={twilioNumber}
+              onChange={(e) => setTwilioNumber(e.target.value)}
+              placeholder="whatsapp:+14155238886"
+              className={inputClass}
+            />
+          </div>
+          <div className="hidden sm:block" />
+          <div>
+            <label className={labelClass}>Admin Password</label>
+            <input
+              type="text"
+              value={adminPw}
+              onChange={(e) => setAdminPw(e.target.value)}
+              placeholder="Strong password"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Dashboard Password</label>
+            <input
+              type="text"
+              value={dashPw}
+              onChange={(e) => setDashPw(e.target.value)}
+              placeholder="Crew password"
+              className={inputClass}
+            />
+          </div>
+        </div>
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        <button
+          type="submit"
+          disabled={!name.trim() || !slug.trim() || !twilioNumber.trim() || !adminPw || !dashPw || saving}
+          className="bg-zinc-900 px-4 py-2 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          {saving ? "Creating..." : "Create Tenant"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ── Tenant Row ──────────────────────────────────────────────────────
+
+function TenantRow({
+  tenant,
+  expanded,
+  onToggle,
+  onUpdated,
+}: {
+  tenant: Tenant;
+  expanded: boolean;
+  onToggle: () => void;
+  onUpdated: () => void;
+}) {
+  return (
+    <div className="border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div
+        className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30"
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-3">
+          <div>
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              {tenant.name}
+            </p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              /dashboard/{tenant.slug}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+              tenant.status === "active"
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500"
+            }`}
+          >
+            {tenant.status}
+          </span>
+          <svg
+            className={`h-4 w-4 text-zinc-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
+      </div>
+
+      {expanded && (
+        <TenantEditPanel tenant={tenant} onUpdated={onUpdated} />
+      )}
+    </div>
+  );
+}
+
+// ── Edit Panel ──────────────────────────────────────────────────────
+
+function TenantEditPanel({
+  tenant,
+  onUpdated,
+}: {
+  tenant: Tenant;
+  onUpdated: () => void;
+}) {
+  const [name, setName] = useState(tenant.name);
+  const [slug, setSlug] = useState(tenant.slug);
+  const [twilioNumber, setTwilioNumber] = useState(tenant.twilioNumber);
+  const [adminPw, setAdminPw] = useState(tenant.adminPassword);
+  const [dashPw, setDashPw] = useState(tenant.dashboardPassword);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const linkRef = useRef<HTMLInputElement>(null);
+
+  function handleSlugChange(value: string) {
+    setSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-"));
+  }
+
+  const dashboardUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/dashboard/${slug}`
+      : `/dashboard/${slug}`;
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/tenants", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: tenant.id,
+          slug: slug.trim(),
+          name: name.trim(),
+          twilioNumber: twilioNumber.trim(),
+          adminPassword: adminPw,
+          dashboardPassword: dashPw,
+        }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+        onUpdated();
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleStatus() {
+    setSaving(true);
+    try {
+      await fetch("/api/admin/tenants", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: tenant.id,
+          status: tenant.status === "active" ? "disabled" : "active",
+        }),
+      });
+      onUpdated();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/tenants?id=${encodeURIComponent(tenant.id)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) onUpdated();
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
+  const inputClass =
+    "w-full border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:ring-1 focus:ring-accent-muted dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:ring-accent-muted";
+  const labelClass =
+    "block text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1";
+
+  return (
+    <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
+      <div className="mb-3">
+        <label className={labelClass}>Dashboard Link</label>
+        <div className="flex gap-2">
+          <input
+            ref={linkRef}
+            type="text"
+            readOnly
+            value={dashboardUrl}
+            className={`${inputClass} bg-zinc-50 dark:bg-zinc-800/50`}
+            onClick={() => linkRef.current?.select()}
+          />
+          <button
+            onClick={() => navigator.clipboard.writeText(dashboardUrl)}
+            className="shrink-0 border border-zinc-300 bg-zinc-100 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+          >
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Company Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>URL Slug</label>
+          <div className="flex items-center gap-0">
+            <span className="border border-r-0 border-zinc-300 bg-zinc-100 px-2 py-2 text-xs text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500">
+              /dashboard/
+            </span>
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => handleSlugChange(e.target.value)}
+              className={`${inputClass} rounded-l-none`}
+            />
+          </div>
+        </div>
+        <div>
+          <label className={labelClass}>Twilio WhatsApp Number</label>
+          <input
+            type="text"
+            value={twilioNumber}
+            onChange={(e) => setTwilioNumber(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div className="hidden sm:block" />
+        <div>
+          <label className={labelClass}>Admin Password</label>
+          <input
+            type="text"
+            value={adminPw}
+            onChange={(e) => setAdminPw(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Dashboard Password</label>
+          <input
+            type="text"
+            value={dashPw}
+            onChange={(e) => setDashPw(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      <div className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
+        Created {formatDate(tenant.createdAt)}
+        {tenant.groupsEnabled && (
+          <span className="ml-2">
+            Groups: {tenant.groupNames.join(", ") || "none configured"}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving || !slug.trim()}
+            className="bg-zinc-900 px-4 py-2 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+          <button
+            onClick={handleToggleStatus}
+            disabled={saving}
+            className={`border px-4 py-2 text-xs font-medium uppercase tracking-wide disabled:opacity-40 ${
+              tenant.status === "active"
+                ? "border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10"
+                : "border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500/50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+            }`}
+          >
+            {tenant.status === "active" ? "Disable" : "Enable"}
+          </button>
+          {saved && (
+            <span className="text-xs text-emerald-600 animate-fade-in dark:text-emerald-400">
+              Saved.
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {confirmDelete ? (
+            <>
+              <span className="text-xs text-red-500">Are you sure?</span>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-red-600 hover:bg-red-100 disabled:opacity-50 dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+              >
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="px-3 py-2 text-[10px] uppercase tracking-wide text-zinc-400 hover:text-red-500 dark:hover:text-red-400"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+function formatDate(iso: string): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}

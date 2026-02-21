@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateTwilioSignature, twimlResponse } from "@/lib/twilio";
 import { parseIntent } from "@/lib/gemini";
+import { getTenantByTwilioNumber } from "@/lib/tenants";
 import type { Tool, ActiveCheckout } from "@/lib/types";
 import {
   getUser,
   createPendingUser,
   registerUser,
+  setUserGroup,
   checkoutTool,
   checkinTool,
   getActiveCheckouts,
@@ -19,16 +21,10 @@ export const dynamic = "force-dynamic";
 
 // ── Tool matching ────────────────────────────────────────────────────
 
-/**
- * Find catalog tools that match what the user said.
- * Checks exact name match, alias match, and substring/partial matches.
- * Returns all matches so the backend can disambiguate.
- */
 function findMatchingTools(query: string, catalog: Tool[]): Tool[] {
   const q = query.toLowerCase().trim();
   if (!q) return [];
 
-  // 1. Exact match on name or alias — best case.
   const exact = catalog.filter(
     (t) =>
       t.name.toLowerCase() === q ||
@@ -36,7 +32,6 @@ function findMatchingTools(query: string, catalog: Tool[]): Tool[] {
   );
   if (exact.length > 0) return exact;
 
-  // 2. Substring match — user said "drill" and catalog has "Dewalt Drill 3432".
   const substring = catalog.filter(
     (t) =>
       t.name.toLowerCase().includes(q) ||
@@ -47,7 +42,6 @@ function findMatchingTools(query: string, catalog: Tool[]): Tool[] {
   );
   if (substring.length > 0) return substring;
 
-  // 3. Word overlap — user said "dewalt drill" and catalog has "Dewalt 1223 Cordless Drill".
   const queryWords = q.split(/\s+/).filter((w) => w.length > 2);
   if (queryWords.length === 0) return [];
 
@@ -72,9 +66,6 @@ function findMatchingTools(query: string, catalog: Tool[]): Tool[] {
   return scored.filter((s) => s.score === topScore).map((s) => s.tool);
 }
 
-/**
- * Find which of the user's checked-out tools matches what they said.
- */
 function findMatchingCheckout(
   query: string,
   userTools: ActiveCheckout[]
@@ -82,17 +73,14 @@ function findMatchingCheckout(
   const q = query.toLowerCase().trim();
   if (!q) return null;
 
-  // Exact match first.
   const exact = userTools.find((t) => t.tool.toLowerCase() === q);
   if (exact) return exact;
 
-  // Substring / partial match.
   const partial = userTools.find(
     (t) => t.tool.toLowerCase().includes(q) || q.includes(t.tool.toLowerCase())
   );
   if (partial) return partial;
 
-  // Word overlap.
   const queryWords = q.split(/\s+/).filter((w) => w.length > 2);
   if (queryWords.length === 0) return null;
 
@@ -131,6 +119,7 @@ export async function POST(req: NextRequest) {
     // ── 1. Parse & validate Twilio request ──────────────────────────
     const params = await parseFormBody(req);
     const phone = params.From ?? "";
+    const to = params.To ?? "";
     const body = (params.Body ?? "").trim();
 
     if (process.env.NODE_ENV === "production") {
@@ -145,26 +134,37 @@ export async function POST(req: NextRequest) {
       return twiml("Couldn't read your message. Try again?");
     }
 
+    // ── 1b. Resolve tenant from the To number ───────────────────────
+    const tenant = await getTenantByTwilioNumber(to);
+    if (!tenant) {
+      return twiml("This number is not configured. Contact your admin.");
+    }
+    const tenantId = tenant.id;
+
     // ── 2. Load user & context ──────────────────────────────────────
-    let user = await getUser(phone);
+    let user = await getUser(tenantId, phone);
     if (!user) {
-      await createPendingUser(phone);
-      user = await getUser(phone);
+      await createPendingUser(tenantId, phone);
+      user = await getUser(tenantId, phone);
     }
 
-    const isRegistered = !!user?.name;
+    const hasName = !!user?.name;
+    const needsGroup =
+      tenant.groupsEnabled && hasName && !user?.group;
+    const isRegistered = hasName && !needsGroup;
+
     const [myTools, allCheckouts, knownTools, history] = await Promise.all([
-      isRegistered ? getToolsByPhone(phone) : Promise.resolve([]),
-      getActiveCheckouts(),
-      getTools(),
-      getRecentMessages(phone),
+      isRegistered ? getToolsByPhone(tenantId, phone) : Promise.resolve([]),
+      getActiveCheckouts(tenantId),
+      getTools(tenantId),
+      getRecentMessages(tenantId, phone),
     ]);
 
     // ── 3. Save user message ────────────────────────────────────────
-    await saveMessage(phone, "user", body);
+    await saveMessage(tenantId, phone, "user", body);
 
     // ── 4. Parse intent with AI ─────────────────────────────────────
-    const parsed = await parseIntent(body, isRegistered, history);
+    const parsed = await parseIntent(body, isRegistered, history, needsGroup);
 
     // ── 5. Handle intent (all logic is here) ────────────────────────
     let reply: string;
@@ -174,11 +174,49 @@ export async function POST(req: NextRequest) {
       case "register": {
         if (isRegistered) {
           reply = `You're already registered as ${user!.name}. Need a tool?`;
+        } else if (needsGroup) {
+          const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+          reply = `Got your name. Which group are you with?\n${list}`;
         } else if (parsed.name) {
-          await registerUser(phone, parsed.name);
-          reply = `Got it, ${parsed.name}. You're all set. Just text me when you grab or return a tool.`;
+          await registerUser(tenantId, phone, parsed.name);
+          if (tenant.groupsEnabled) {
+            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            reply = `Got it, ${parsed.name}. Which group are you with?\n${list}`;
+          } else {
+            reply = `Got it, ${parsed.name}. You're all set. Just text me when you grab or return a tool.`;
+          }
         } else {
           reply = "What's your name?";
+        }
+        break;
+      }
+
+      // ── Group selection ───────────────────────────────────────────
+      case "select_group": {
+        if (!hasName) {
+          reply = "Hey — looks like you're new. What's your name?";
+          break;
+        }
+        if (!needsGroup) {
+          reply = isRegistered
+            ? `You're already set up${user!.group ? ` in ${user!.group}` : ""}. Need a tool?`
+            : "Need a tool?";
+          break;
+        }
+
+        const selectedGroup = parsed.group?.trim();
+        const matchedGroup = selectedGroup
+          ? tenant.groupNames.find(
+              (g) => g.toLowerCase() === selectedGroup.toLowerCase()
+            )
+          : null;
+
+        if (matchedGroup) {
+          await setUserGroup(tenantId, phone, matchedGroup);
+          reply = `${matchedGroup} — got it. You're all set. Just text me when you grab or return a tool.`;
+        } else {
+          const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+          reply = `Didn't catch that. Which group?\n${list}`;
         }
         break;
       }
@@ -186,7 +224,12 @@ export async function POST(req: NextRequest) {
       // ── Checkout ──────────────────────────────────────────────────
       case "checkout": {
         if (!isRegistered) {
-          reply = "Hey — looks like you're new. What's your name?";
+          if (needsGroup) {
+            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            reply = `Before you grab a tool, which group are you with?\n${list}`;
+          } else {
+            reply = "Hey — looks like you're new. What's your name?";
+          }
           break;
         }
 
@@ -207,12 +250,10 @@ export async function POST(req: NextRequest) {
             .map((t, i) => `${i + 1}) ${t.name}`)
             .join("\n");
           reply = `Multiple tools match. Which one?\n${list}`;
-          // Save the pending choices so "confirm" can resolve them.
-          await saveMessage(phone, "assistant", reply);
+          await saveMessage(tenantId, phone, "assistant", reply);
           return twiml(reply);
         }
 
-        // Single match — check for conflicts.
         const tool = checkoutMatches[0];
         const conflict = allCheckouts.find(
           (c) => c.tool.toLowerCase() === tool.name.toLowerCase()
@@ -225,7 +266,7 @@ export async function POST(req: NextRequest) {
             reply = `${tool.name} is checked out to ${conflict.person}. Not available right now.`;
           }
         } else {
-          await checkoutTool(tool.name, user!.name, phone);
+          await checkoutTool(tenantId, tool.name, user!.name, phone, user!.group);
           reply = `${tool.name} — checked out to you. ✓`;
         }
         break;
@@ -234,7 +275,12 @@ export async function POST(req: NextRequest) {
       // ── Checkin ───────────────────────────────────────────────────
       case "checkin": {
         if (!isRegistered) {
-          reply = "Hey — looks like you're new. What's your name?";
+          if (needsGroup) {
+            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            reply = `Before we continue, which group are you with?\n${list}`;
+          } else {
+            reply = "Hey — looks like you're new. What's your name?";
+          }
           break;
         }
 
@@ -243,10 +289,9 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        // "returning everything"
         if (parsed.tool === "all") {
           for (const t of myTools) {
-            await checkinTool(t.tool, phone);
+            await checkinTool(tenantId, t.tool, phone);
           }
           const names = myTools.map((t) => t.tool).join(", ");
           reply = `All returned: ${names}. ✓`;
@@ -255,8 +300,7 @@ export async function POST(req: NextRequest) {
 
         if (!parsed.tool) {
           if (myTools.length === 1) {
-            // Only one tool — just return it.
-            await checkinTool(myTools[0].tool, phone);
+            await checkinTool(tenantId, myTools[0].tool, phone);
             reply = `${myTools[0].tool} — returned. ✓`;
           } else {
             const list = myTools.map((t) => `- ${t.tool}`).join("\n");
@@ -265,11 +309,10 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        // Match against user's checked-out tools.
         const checkinMatch = findMatchingCheckout(parsed.tool, myTools);
 
         if (checkinMatch) {
-          await checkinTool(checkinMatch.tool, phone);
+          await checkinTool(tenantId, checkinMatch.tool, phone);
           reply = `${checkinMatch.tool} — returned. ✓`;
         } else {
           const list = myTools.map((t) => `- ${t.tool}`).join("\n");
@@ -281,7 +324,6 @@ export async function POST(req: NextRequest) {
       // ── Status queries ────────────────────────────────────────────
       case "status": {
         if (parsed.tool) {
-          // "Who has the drill?"
           const q = parsed.tool.toLowerCase();
           const matches = allCheckouts.filter(
             (c) =>
@@ -300,7 +342,6 @@ export async function POST(req: NextRequest) {
               .join("\n");
           }
         } else {
-          // "What's checked out?" or "What do I have?"
           const isAskingAboutSelf =
             body.toLowerCase().includes("my") ||
             body.toLowerCase().includes("i have") ||
@@ -327,7 +368,12 @@ export async function POST(req: NextRequest) {
 
       // ── Confirm (yes/yeah in response to disambiguation) ──────────
       case "confirm": {
-        // Look at the last bot message to see what we asked.
+        if (needsGroup) {
+          const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+          reply = `Which group are you with?\n${list}`;
+          break;
+        }
+
         const lastBotMsg = [...history]
           .reverse()
           .find((m) => m.role === "assistant");
@@ -337,7 +383,6 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        // Check if the last message was a disambiguation list ("1) Tool A\n2) Tool B").
         const numberedPattern = /^\d+\)\s+(.+)$/gm;
         const choices: string[] = [];
         let match;
@@ -346,7 +391,6 @@ export async function POST(req: NextRequest) {
         }
 
         if (choices.length === 1 || (choices.length === 0 && lastBotMsg.content.includes("Do you mean"))) {
-          // Single suggestion — "Do you mean X?" — user said yes.
           const doYouMeanMatch = lastBotMsg.content.match(
             /Do you mean (?:the )?(.+)\?/i
           );
@@ -367,7 +411,7 @@ export async function POST(req: NextRequest) {
                     ? `You already have ${catalogTool[0].name} checked out.`
                     : `${catalogTool[0].name} is checked out to ${conflict.person}. Not available.`;
               } else {
-                await checkoutTool(catalogTool[0].name, user!.name, phone);
+                await checkoutTool(tenantId, catalogTool[0].name, user!.name, phone, user!.group);
                 reply = `${catalogTool[0].name} — checked out to you. ✓`;
               }
             } else {
@@ -377,7 +421,6 @@ export async function POST(req: NextRequest) {
             reply = "Not sure what you're confirming. Try again?";
           }
         } else if (choices.length > 1) {
-          // They said "yes" to a list — need a number.
           reply = "Which number? Reply with the number (e.g. 1, 2, etc.)";
         } else {
           reply = "👍";
@@ -394,7 +437,12 @@ export async function POST(req: NextRequest) {
       // ── Greeting ──────────────────────────────────────────────────
       case "greeting": {
         if (!isRegistered) {
-          reply = "Hey — looks like you're new. What's your name?";
+          if (needsGroup) {
+            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            reply = `Hey ${user!.name}. Which group are you with?\n${list}`;
+          } else {
+            reply = "Hey — looks like you're new. What's your name?";
+          }
         } else {
           reply = "Hey. What tool do you need?";
         }
@@ -410,7 +458,34 @@ export async function POST(req: NextRequest) {
       // ── Unknown / fallback ────────────────────────────────────────
       case "unknown":
       default: {
-        // Check if the message is a number — could be selecting from a list.
+        // If the user needs to pick a group and typed a number, match it.
+        if (needsGroup) {
+          const num = parseInt(body.trim(), 10);
+          if (!isNaN(num) && num > 0 && num <= tenant.groupNames.length) {
+            const picked = tenant.groupNames[num - 1];
+            await setUserGroup(tenantId, phone, picked);
+            reply = `${picked} — got it. You're all set. Just text me when you grab or return a tool.`;
+            await saveMessage(tenantId, phone, "assistant", reply);
+            return twiml(reply);
+          }
+
+          // Try a text match
+          const textMatch = tenant.groupNames.find(
+            (g) => g.toLowerCase() === body.toLowerCase().trim()
+          );
+          if (textMatch) {
+            await setUserGroup(tenantId, phone, textMatch);
+            reply = `${textMatch} — got it. You're all set. Just text me when you grab or return a tool.`;
+            await saveMessage(tenantId, phone, "assistant", reply);
+            return twiml(reply);
+          }
+
+          const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+          reply = `Didn't catch that. Which group?\n${list}`;
+          await saveMessage(tenantId, phone, "assistant", reply);
+          return twiml(reply);
+        }
+
         const num = parseInt(body.trim(), 10);
         if (!isNaN(num) && num > 0) {
           const lastBotMsg = [...history]
@@ -443,9 +518,11 @@ export async function POST(req: NextRequest) {
                       : `${catalogMatch[0].name} is checked out to ${conflict.person}. Not available.`;
                 } else {
                   await checkoutTool(
+                    tenantId,
                     catalogMatch[0].name,
                     user!.name,
-                    phone
+                    phone,
+                    user!.group
                   );
                   reply = `${catalogMatch[0].name} — checked out to you. ✓`;
                 }
@@ -458,7 +535,12 @@ export async function POST(req: NextRequest) {
         }
 
         if (!isRegistered) {
-          reply = "Hey — looks like you're new. What's your name?";
+          if (needsGroup) {
+            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            reply = `Which group are you with?\n${list}`;
+          } else {
+            reply = "Hey — looks like you're new. What's your name?";
+          }
         } else {
           reply =
             "Didn't catch that. You can check out a tool, return one, or ask who has something.";
@@ -468,7 +550,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 6. Save bot reply & respond ─────────────────────────────────
-    await saveMessage(phone, "assistant", reply);
+    await saveMessage(tenantId, phone, "assistant", reply);
     return twiml(reply);
   } catch (error) {
     console.error("Webhook error:", error);
