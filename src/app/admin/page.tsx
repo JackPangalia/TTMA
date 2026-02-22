@@ -16,6 +16,15 @@ interface Tenant {
   status: "active" | "disabled";
 }
 
+interface ContactSubmission {
+  id: string;
+  company: string;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -27,6 +36,10 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [contacts, setContacts] = useState<ContactSubmission[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/tenants")
@@ -55,6 +68,36 @@ export default function AdminPage() {
       setLoading(false);
     }
   }, []);
+
+  const fetchContacts = useCallback(async () => {
+    setContactsLoading(true);
+    try {
+      const res = await fetch("/api/admin/contacts");
+      if (res.ok) {
+        const data = await res.json();
+        setContacts(data.submissions ?? []);
+      }
+    } finally {
+      setContactsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authed) fetchContacts();
+  }, [authed, fetchContacts]);
+
+  async function handleDeleteContact(id: string) {
+    if (deletingContactId) return;
+    setDeletingContactId(id);
+    try {
+      const res = await fetch(`/api/admin/contacts?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) fetchContacts();
+    } finally {
+      setDeletingContactId(null);
+    }
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -217,6 +260,80 @@ export default function AdminPage() {
             ))}
           </div>
         )}
+
+        {/* Contact submissions */}
+        <div className="mt-10">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Contact Submissions{" "}
+              {contacts.length > 0 && (
+                <span className="ml-1 text-zinc-400 dark:text-zinc-600">
+                  {contacts.length}
+                </span>
+              )}
+            </h2>
+            <button
+              onClick={fetchContacts}
+              disabled={contactsLoading}
+              className="text-[10px] font-medium uppercase tracking-wide text-zinc-400 hover:text-zinc-600 disabled:opacity-50 dark:hover:text-zinc-300"
+            >
+              {contactsLoading ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+
+          {contactsLoading && contacts.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+            </div>
+          ) : contacts.length === 0 ? (
+            <div className="border border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+              No contact submissions yet.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {contacts.map((c) => (
+                <div
+                  key={c.id}
+                  className="border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          {c.company}
+                        </p>
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                          {c.name}
+                        </span>
+                        <a
+                          href={`mailto:${c.email}`}
+                          className="text-xs text-zinc-400 underline decoration-zinc-300 hover:text-zinc-600 dark:text-zinc-500 dark:decoration-zinc-700 dark:hover:text-zinc-300"
+                        >
+                          {c.email}
+                        </a>
+                      </div>
+                      {c.message && (
+                        <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                          {c.message}
+                        </p>
+                      )}
+                      <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-600">
+                        {formatDate(c.createdAt)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteContact(c.id)}
+                      disabled={deletingContactId === c.id}
+                      className="shrink-0 px-2 py-1 text-[10px] uppercase tracking-wide text-zinc-400 hover:text-red-500 disabled:opacity-50 dark:hover:text-red-400"
+                    >
+                      {deletingContactId === c.id ? "..." : "Dismiss"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
