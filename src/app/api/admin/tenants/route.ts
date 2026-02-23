@@ -17,7 +17,7 @@ const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD ?? "";
  * Body: { action: "login", password: string }
  *
  * POST /api/admin/tenants — create tenant
- * Body: { action: "create", name, twilioNumber, adminPassword, dashboardPassword }
+ * Body: { action: "create", slug, name, joinCode, adminPassword, dashboardPassword }
  *
  * PATCH /api/admin/tenants
  * Body: { id, ...updates }
@@ -73,13 +73,13 @@ export async function POST(req: NextRequest) {
     if (action === "create") {
       const slug = (body.slug ?? "").toString().toLowerCase().trim();
       const name = (body.name ?? "").toString().trim();
-      const twilioNumber = (body.twilioNumber ?? "").toString().trim();
+      const joinCode = (body.joinCode ?? "").toString().toUpperCase().trim();
       const adminPassword = (body.adminPassword ?? "").toString().trim();
       const dashboardPassword = (body.dashboardPassword ?? "").toString().trim();
 
-      if (!slug || !name || !twilioNumber || !adminPassword || !dashboardPassword) {
+      if (!slug || !name || !joinCode || !adminPassword || !dashboardPassword) {
         return NextResponse.json(
-          { error: "slug, name, twilioNumber, adminPassword, and dashboardPassword are required" },
+          { error: "slug, name, joinCode, adminPassword, and dashboardPassword are required" },
           { status: 400 }
         );
       }
@@ -91,11 +91,18 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      if (!/^[A-Z0-9-]+$/.test(joinCode)) {
+        return NextResponse.json(
+          { error: "Join code can only contain uppercase letters, numbers, and hyphens" },
+          { status: 400 }
+        );
+      }
+
       try {
         const id = await createTenant({
           slug,
           name,
-          twilioNumber,
+          joinCode,
           adminPassword,
           dashboardPassword,
           groupsEnabled: false,
@@ -134,7 +141,7 @@ export async function PATCH(req: NextRequest) {
     const updates: Record<string, unknown> = {};
     if (body.slug !== undefined) updates.slug = body.slug.toString().toLowerCase().trim();
     if (body.name !== undefined) updates.name = body.name;
-    if (body.twilioNumber !== undefined) updates.twilioNumber = body.twilioNumber;
+    if (body.joinCode !== undefined) updates.joinCode = body.joinCode.toString().toUpperCase().trim();
     if (body.adminPassword !== undefined) updates.adminPassword = body.adminPassword;
     if (body.dashboardPassword !== undefined) updates.dashboardPassword = body.dashboardPassword;
     if (body.status !== undefined) updates.status = body.status;

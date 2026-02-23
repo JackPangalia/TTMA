@@ -7,7 +7,7 @@ interface Tenant {
   id: string;
   slug: string;
   name: string;
-  twilioNumber: string;
+  joinCode: string;
   adminPassword: string;
   dashboardPassword: string;
   groupsEnabled: boolean;
@@ -344,7 +344,7 @@ export default function AdminPage() {
 function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const [twilioNumber, setTwilioNumber] = useState("");
+  const [joinCode, setJoinCode] = useState("");
   const [adminPw, setAdminPw] = useState("");
   const [dashPw, setDashPw] = useState("");
   const [saving, setSaving] = useState(false);
@@ -352,6 +352,10 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
 
   function handleSlugChange(value: string) {
     setSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-"));
+  }
+
+  function handleJoinCodeChange(value: string) {
+    setJoinCode(value.toUpperCase().replace(/[^A-Z0-9-]/g, ""));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -368,7 +372,7 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
           action: "create",
           slug: slug.trim(),
           name: name.trim(),
-          twilioNumber: twilioNumber.trim(),
+          joinCode: joinCode.trim(),
           adminPassword: adminPw,
           dashboardPassword: dashPw,
         }),
@@ -421,14 +425,17 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
             </div>
           </div>
           <div>
-            <label className={labelClass}>Twilio WhatsApp Number</label>
+            <label className={labelClass}>Join Code</label>
             <input
               type="text"
-              value={twilioNumber}
-              onChange={(e) => setTwilioNumber(e.target.value)}
-              placeholder="whatsapp:+14155238886"
+              value={joinCode}
+              onChange={(e) => handleJoinCodeChange(e.target.value)}
+              placeholder="ACME"
               className={inputClass}
             />
+            <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
+              Workers text this code to join via WhatsApp
+            </p>
           </div>
           <div className="hidden sm:block" />
           <div>
@@ -455,7 +462,7 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button
           type="submit"
-          disabled={!name.trim() || !slug.trim() || !twilioNumber.trim() || !adminPw || !dashPw || saving}
+          disabled={!name.trim() || !slug.trim() || !joinCode.trim() || !adminPw || !dashPw || saving}
           className="bg-zinc-900 px-4 py-2 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {saving ? "Creating..." : "Create Tenant"}
@@ -486,9 +493,16 @@ function TenantRow({
       >
         <div className="flex items-center gap-3">
           <div>
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {tenant.name}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                {tenant.name}
+              </p>
+              {tenant.joinCode && (
+                <span className="bg-zinc-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                  {tenant.joinCode}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-zinc-400 dark:text-zinc-500">
               /dashboard/{tenant.slug}
             </p>
@@ -534,7 +548,7 @@ function TenantEditPanel({
 }) {
   const [name, setName] = useState(tenant.name);
   const [slug, setSlug] = useState(tenant.slug);
-  const [twilioNumber, setTwilioNumber] = useState(tenant.twilioNumber);
+  const [joinCode, setJoinCode] = useState(tenant.joinCode);
   const [adminPw, setAdminPw] = useState(tenant.adminPassword);
   const [dashPw, setDashPw] = useState(tenant.dashboardPassword);
   const [saving, setSaving] = useState(false);
@@ -545,6 +559,10 @@ function TenantEditPanel({
 
   function handleSlugChange(value: string) {
     setSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-"));
+  }
+
+  function handleJoinCodeChange(value: string) {
+    setJoinCode(value.toUpperCase().replace(/[^A-Z0-9-]/g, ""));
   }
 
   const dashboardUrl =
@@ -562,7 +580,7 @@ function TenantEditPanel({
           id: tenant.id,
           slug: slug.trim(),
           name: name.trim(),
-          twilioNumber: twilioNumber.trim(),
+          joinCode: joinCode.trim(),
           adminPassword: adminPw,
           dashboardPassword: dashPw,
         }),
@@ -659,13 +677,16 @@ function TenantEditPanel({
           </div>
         </div>
         <div>
-          <label className={labelClass}>Twilio WhatsApp Number</label>
+          <label className={labelClass}>Join Code</label>
           <input
             type="text"
-            value={twilioNumber}
-            onChange={(e) => setTwilioNumber(e.target.value)}
+            value={joinCode}
+            onChange={(e) => handleJoinCodeChange(e.target.value)}
             className={inputClass}
           />
+          <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
+            Workers text this code to join via WhatsApp
+          </p>
         </div>
         <div className="hidden sm:block" />
         <div>

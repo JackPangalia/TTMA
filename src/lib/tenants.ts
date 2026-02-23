@@ -7,11 +7,14 @@ function now(): string {
   return new Date().toISOString();
 }
 
-export async function getTenantByTwilioNumber(
-  twilioNumber: string
+export async function getTenantByJoinCode(
+  code: string
 ): Promise<Tenant | null> {
+  const normalised = code.toUpperCase().trim();
+  if (!normalised) return null;
+
   const snapshot = await tenantsCol()
-    .where("twilioNumber", "==", twilioNumber)
+    .where("joinCode", "==", normalised)
     .where("status", "==", "active")
     .limit(1)
     .get();
@@ -54,7 +57,7 @@ export async function createTenant(
   await tenantsCol().doc(slug).set({
     slug,
     name: data.name.trim(),
-    twilioNumber: data.twilioNumber.trim(),
+    joinCode: data.joinCode.toUpperCase().trim(),
     adminPassword: data.adminPassword,
     dashboardPassword: data.dashboardPassword,
     groupsEnabled: data.groupsEnabled,
@@ -84,7 +87,7 @@ function docToTenant(
     id: doc.id,
     slug: d.slug ?? doc.id,
     name: d.name ?? "",
-    twilioNumber: d.twilioNumber ?? "",
+    joinCode: d.joinCode ?? "",
     adminPassword: d.adminPassword ?? "",
     dashboardPassword: d.dashboardPassword ?? "",
     groupsEnabled: d.groupsEnabled ?? false,

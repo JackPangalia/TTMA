@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateTwilioSignature, twimlResponse } from "@/lib/twilio";
 import { parseIntent } from "@/lib/gemini";
-import { getTenantByTwilioNumber } from "@/lib/tenants";
-import type { Tool, ActiveCheckout } from "@/lib/types";
+import { getTenantByJoinCode, getTenantById } from "@/lib/tenants";
+import type { Tool, ActiveCheckout, Tenant } from "@/lib/types";
 import {
   getUser,
+  getUserByPhone,
   createPendingUser,
   registerUser,
   setUserGroup,
@@ -119,7 +120,6 @@ export async function POST(req: NextRequest) {
     // ── 1. Parse & validate Twilio request ──────────────────────────
     const params = await parseFormBody(req);
     const phone = params.From ?? "";
-    const to = params.To ?? "";
     const body = (params.Body ?? "").trim();
 
     if (process.env.NODE_ENV === "production") {
@@ -134,11 +134,18 @@ export async function POST(req: NextRequest) {
       return twiml("Couldn't read your message. Try again?");
     }
 
-    // ── 1b. Resolve tenant from the To number ───────────────────────
-    const tenant = await getTenantByTwilioNumber(to);
-    if (!tenant) {
-      return twiml("This number is not configured. Contact your admin.");
+    // ── 1b. Resolve tenant from phone number or onboarding flow ─────
+    let tenant: Tenant | null = null;
+    const existingUser = await getUserByPhone(phone);
+
+    if (existingUser?.tenantId) {
+      tenant = await getTenantById(existingUser.tenantId);
     }
+
+    if (!tenant) {
+      return handleOnboarding(phone, body);
+    }
+
     const tenantId = tenant.id;
 
     // ── 2. Load user & context ──────────────────────────────────────
@@ -577,4 +584,41 @@ function formatTime(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+// ── Onboarding flow for unknown phone numbers ───────────────────────
+
+async function handleOnboarding(
+  phone: string,
+  body: string
+): Promise<NextResponse> {
+  const history = await getRecentMessages("", phone, 4);
+  await saveMessage("", phone, "user", body);
+
+  const lastBotMsg = [...history].reverse().find((m) => m.role === "assistant");
+  const awaitingCode =
+    !lastBotMsg || lastBotMsg.content.includes("join code");
+
+  if (awaitingCode) {
+    const code = body.trim();
+    const tenant = await getTenantByJoinCode(code);
+
+    if (tenant) {
+      await createPendingUser(tenant.id, phone);
+      const reply = `Got it — ${tenant.name}! What's your name?`;
+      await saveMessage("", phone, "assistant", reply);
+      return twiml(reply);
+    }
+
+    const reply =
+      history.length > 0
+        ? "Didn't recognize that code. Try again, or check with your manager."
+        : "Welcome to TTMA! What's your company join code? Your manager will give you this.";
+    await saveMessage("", phone, "assistant", reply);
+    return twiml(reply);
+  }
+
+  const reply = "What's your company join code? Your manager will give you this.";
+  await saveMessage("", phone, "assistant", reply);
+  return twiml(reply);
 }

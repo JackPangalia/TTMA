@@ -4,7 +4,7 @@ export interface Tenant {
   id: string;
   slug: string;
   name: string;
-  twilioNumber: string;
+  joinCode: string;
   adminPassword: string;
   dashboardPassword: string;
   groupsEnabled: boolean;

@@ -17,6 +17,33 @@ function now(): string {
 
 // ── Users ───────────────────────────────────────────────────────────
 
+/**
+ * Look up an existing user across all tenants by phone number alone.
+ * Returns the first user that has a non-empty tenantId (i.e. completed onboarding).
+ */
+export async function getUserByPhone(phone: string): Promise<User | null> {
+  const snapshot = await usersCol()
+    .where("phone", "==", phone)
+    .limit(10)
+    .get();
+
+  if (snapshot.empty) return null;
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    if (data.tenantId) {
+      return {
+        phone: data.phone,
+        name: data.name ?? "",
+        group: data.group ?? null,
+        tenantId: data.tenantId,
+        registeredAt: data.registeredAt,
+      };
+    }
+  }
+  return null;
+}
+
 export async function getUser(
   tenantId: string,
   phone: string
@@ -286,8 +313,9 @@ export async function saveMessage(
   role: "user" | "assistant",
   content: string
 ): Promise<void> {
+  const key = tenantId ? `${tenantId}_${phone}` : `onboarding_${phone}`;
   await conversationsCol()
-    .doc(`${tenantId}_${phone}`)
+    .doc(key)
     .collection("messages")
     .add({
       role,
@@ -301,8 +329,9 @@ export async function getRecentMessages(
   phone: string,
   limit = 6
 ): Promise<ChatMessage[]> {
+  const key = tenantId ? `${tenantId}_${phone}` : `onboarding_${phone}`;
   const snapshot = await conversationsCol()
-    .doc(`${tenantId}_${phone}`)
+    .doc(key)
     .collection("messages")
     .orderBy("timestamp", "desc")
     .limit(limit)
