@@ -30,7 +30,7 @@ export function DashboardHeader({
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5 sm:px-6">
         <div className="flex items-center gap-3">
           <Link
-            href="/"
+            href="/dashboard"
             className="text-sm font-bold uppercase tracking-wider text-zinc-900 hover:opacity-80 dark:text-zinc-100"
           >
             TTMA
