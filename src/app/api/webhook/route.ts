@@ -19,6 +19,7 @@ import {
 } from "@/lib/sheets";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // ── Tool matching ────────────────────────────────────────────────────
 
@@ -105,12 +106,7 @@ async function parseFormBody(
   req: NextRequest
 ): Promise<Record<string, string>> {
   const text = await req.text();
-  const params: Record<string, string> = {};
-  for (const pair of text.split("&")) {
-    const [key, value] = pair.split("=").map(decodeURIComponent);
-    if (key) params[key] = value ?? "";
-  }
-  return params;
+  return Object.fromEntries(new URLSearchParams(text).entries());
 }
 
 // ── Webhook handler ─────────────────────────────────────────────────
