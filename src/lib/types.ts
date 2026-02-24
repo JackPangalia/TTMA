@@ -72,6 +72,7 @@ export type Intent =
   | "checkout"
   | "checkin"
   | "status"
+  | "availability"
   | "help"
   | "register_name"
   | "select_group"

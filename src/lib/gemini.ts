@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_PROMPT } from "@/config/prompts";
 import type { ChatMessage } from "./sheets";
+import type { Tool, ActiveCheckout } from "./types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -12,6 +13,7 @@ export type Intent =
   | "checkout"
   | "checkin"
   | "status"
+  | "availability"
   | "register"
   | "select_group"
   | "confirm"
@@ -27,13 +29,35 @@ export interface ParsedIntent {
   group: string | null;
 }
 
+// ── Build catalog context for the AI ────────────────────────────────
+
+function buildCatalogContext(
+  toolCatalog: Tool[],
+  activeCheckouts: ActiveCheckout[]
+): string {
+  const toolNames = toolCatalog.map((t) => t.name);
+  const checkedOut = activeCheckouts.map(
+    (c) => `${c.tool} → ${c.person}`
+  );
+
+  let ctx = `\n[TOOL CATALOG] ${toolNames.length} tools: ${toolNames.join(", ")}`;
+  if (checkedOut.length > 0) {
+    ctx += `\n[CHECKED OUT] ${checkedOut.join(", ")}`;
+  } else {
+    ctx += `\n[CHECKED OUT] Nothing is checked out.`;
+  }
+  return ctx;
+}
+
 // ── Main parse function ─────────────────────────────────────────────
 
 export async function parseIntent(
   message: string,
   isRegistered: boolean,
   history: ChatMessage[],
-  needsGroup?: boolean
+  needsGroup: boolean,
+  toolCatalog: Tool[],
+  activeCheckouts: ActiveCheckout[]
 ): Promise<ParsedIntent> {
   const contents: { role: string; parts: { text: string }[] }[] = [];
 
@@ -44,6 +68,8 @@ export async function parseIntent(
   if (needsGroup) {
     context += " The bot just asked the user to pick a group.";
   }
+
+  context += buildCatalogContext(toolCatalog, activeCheckouts);
 
   contents.push({
     role: "user",
@@ -82,6 +108,7 @@ export async function parseIntent(
                 "checkout",
                 "checkin",
                 "status",
+                "availability",
                 "register",
                 "select_group",
                 "confirm",
@@ -94,7 +121,8 @@ export async function parseIntent(
             tool: {
               type: Type.STRING,
               nullable: true,
-              description: "Tool name as the user wrote it, or null",
+              description:
+                "Exact canonical tool name from the catalog, or null",
             },
             name: {
               type: Type.STRING,
@@ -104,7 +132,8 @@ export async function parseIntent(
             group: {
               type: Type.STRING,
               nullable: true,
-              description: "Group name selected during registration, or null",
+              description:
+                "Group name selected during registration, or null",
             },
           },
           required: ["intent", "tool", "name", "group"],

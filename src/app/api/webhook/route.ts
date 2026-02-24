@@ -21,83 +21,23 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// ── Tool matching ────────────────────────────────────────────────────
+// ── Catalog lookup (exact match only) ────────────────────────────────
 
-function findMatchingTools(query: string, catalog: Tool[]): Tool[] {
-  const q = query.toLowerCase().trim();
-  if (!q) return [];
-
-  const exact = catalog.filter(
-    (t) =>
-      t.name.toLowerCase() === q ||
-      (t.aliases ?? []).some((a) => a.toLowerCase() === q)
+function findToolByName(name: string, catalog: Tool[]): Tool | null {
+  return (
+    catalog.find((t) => t.name.toLowerCase() === name.toLowerCase()) ?? null
   );
-  if (exact.length > 0) return exact;
-
-  const substring = catalog.filter(
-    (t) =>
-      t.name.toLowerCase().includes(q) ||
-      q.includes(t.name.toLowerCase()) ||
-      (t.aliases ?? []).some(
-        (a) => a.toLowerCase().includes(q) || q.includes(a.toLowerCase())
-      )
-  );
-  if (substring.length > 0) return substring;
-
-  const queryWords = q.split(/\s+/).filter((w) => w.length > 2);
-  if (queryWords.length === 0) return [];
-
-  const scored = catalog
-    .map((t) => {
-      const nameWords = t.name.toLowerCase().split(/\s+/);
-      const aliasWords = (t.aliases ?? []).flatMap((a) =>
-        a.toLowerCase().split(/\s+/)
-      );
-      const allWords = [...nameWords, ...aliasWords];
-      const hits = queryWords.filter((w) =>
-        allWords.some((aw) => aw.includes(w) || w.includes(aw))
-      );
-      return { tool: t, score: hits.length };
-    })
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score);
-
-  if (scored.length === 0) return [];
-
-  const topScore = scored[0].score;
-  return scored.filter((s) => s.score === topScore).map((s) => s.tool);
 }
 
-function findMatchingCheckout(
-  query: string,
+function findCheckoutByToolName(
+  toolName: string,
   userTools: ActiveCheckout[]
 ): ActiveCheckout | null {
-  const q = query.toLowerCase().trim();
-  if (!q) return null;
-
-  const exact = userTools.find((t) => t.tool.toLowerCase() === q);
-  if (exact) return exact;
-
-  const partial = userTools.find(
-    (t) => t.tool.toLowerCase().includes(q) || q.includes(t.tool.toLowerCase())
+  return (
+    userTools.find(
+      (t) => t.tool.toLowerCase() === toolName.toLowerCase()
+    ) ?? null
   );
-  if (partial) return partial;
-
-  const queryWords = q.split(/\s+/).filter((w) => w.length > 2);
-  if (queryWords.length === 0) return null;
-
-  const scored = userTools
-    .map((t) => {
-      const toolWords = t.tool.toLowerCase().split(/\s+/);
-      const hits = queryWords.filter((w) =>
-        toolWords.some((tw) => tw.includes(w) || w.includes(tw))
-      );
-      return { checkout: t, score: hits.length };
-    })
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score);
-
-  return scored.length > 0 ? scored[0].checkout : null;
 }
 
 // ── Form body parser ────────────────────────────────────────────────
@@ -152,8 +92,7 @@ export async function POST(req: NextRequest) {
     }
 
     const hasName = !!user?.name;
-    const needsGroup =
-      tenant.groupsEnabled && hasName && !user?.group;
+    const needsGroup = tenant.groupsEnabled && hasName && !user?.group;
     const isRegistered = hasName && !needsGroup;
 
     const [myTools, allCheckouts, knownTools, history] = await Promise.all([
@@ -166,10 +105,17 @@ export async function POST(req: NextRequest) {
     // ── 3. Save user message ────────────────────────────────────────
     await saveMessage(tenantId, phone, "user", body);
 
-    // ── 4. Parse intent with AI ─────────────────────────────────────
-    const parsed = await parseIntent(body, isRegistered, history, needsGroup);
+    // ── 4. Parse intent with AI (catalog-aware) ─────────────────────
+    const parsed = await parseIntent(
+      body,
+      isRegistered,
+      history,
+      needsGroup,
+      knownTools,
+      allCheckouts
+    );
 
-    // ── 5. Handle intent (all logic is here) ────────────────────────
+    // ── 5. Handle intent ────────────────────────────────────────────
     let reply: string;
 
     switch (parsed.intent) {
@@ -178,12 +124,16 @@ export async function POST(req: NextRequest) {
         if (isRegistered) {
           reply = `You're already registered as ${user!.name}. Need a tool?`;
         } else if (needsGroup) {
-          const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+          const list = tenant.groupNames
+            .map((g, i) => `${i + 1}) ${g}`)
+            .join("\n");
           reply = `Got your name. Which group are you with?\n${list}`;
         } else if (parsed.name) {
           await registerUser(tenantId, phone, parsed.name);
           if (tenant.groupsEnabled) {
-            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            const list = tenant.groupNames
+              .map((g, i) => `${i + 1}) ${g}`)
+              .join("\n");
             reply = `Got it, ${parsed.name}. Which group are you with?\n${list}`;
           } else {
             reply = `Got it, ${parsed.name}. You're all set. Just text me when you grab or return a tool.`;
@@ -218,7 +168,9 @@ export async function POST(req: NextRequest) {
           await setUserGroup(tenantId, phone, matchedGroup);
           reply = `${matchedGroup} — got it. You're all set. Just text me when you grab or return a tool.`;
         } else {
-          const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+          const list = tenant.groupNames
+            .map((g, i) => `${i + 1}) ${g}`)
+            .join("\n");
           reply = `Didn't catch that. Which group?\n${list}`;
         }
         break;
@@ -228,7 +180,9 @@ export async function POST(req: NextRequest) {
       case "checkout": {
         if (!isRegistered) {
           if (needsGroup) {
-            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            const list = tenant.groupNames
+              .map((g, i) => `${i + 1}) ${g}`)
+              .join("\n");
             reply = `Before you grab a tool, which group are you with?\n${list}`;
           } else {
             reply = "Hey — looks like you're new. What's your name?";
@@ -241,23 +195,13 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        const checkoutMatches = findMatchingTools(parsed.tool, knownTools);
+        const tool = findToolByName(parsed.tool, knownTools);
 
-        if (checkoutMatches.length === 0) {
-          reply = `No tool matching "${parsed.tool}" in the catalog. Managers add tools via the dashboard.`;
+        if (!tool) {
+          reply = `No tool matching "${parsed.tool}" in the catalog. Check the dashboard for available tools.`;
           break;
         }
 
-        if (checkoutMatches.length > 1) {
-          const list = checkoutMatches
-            .map((t, i) => `${i + 1}) ${t.name}`)
-            .join("\n");
-          reply = `Multiple tools match. Which one?\n${list}`;
-          await saveMessage(tenantId, phone, "assistant", reply);
-          return twiml(reply);
-        }
-
-        const tool = checkoutMatches[0];
         const conflict = allCheckouts.find(
           (c) => c.tool.toLowerCase() === tool.name.toLowerCase()
         );
@@ -269,7 +213,13 @@ export async function POST(req: NextRequest) {
             reply = `${tool.name} is checked out to ${conflict.person}. Not available right now.`;
           }
         } else {
-          await checkoutTool(tenantId, tool.name, user!.name, phone, user!.group);
+          await checkoutTool(
+            tenantId,
+            tool.name,
+            user!.name,
+            phone,
+            user!.group
+          );
           reply = `${tool.name} — checked out to you. ✓`;
         }
         break;
@@ -279,7 +229,9 @@ export async function POST(req: NextRequest) {
       case "checkin": {
         if (!isRegistered) {
           if (needsGroup) {
-            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            const list = tenant.groupNames
+              .map((g, i) => `${i + 1}) ${g}`)
+              .join("\n");
             reply = `Before we continue, which group are you with?\n${list}`;
           } else {
             reply = "Hey — looks like you're new. What's your name?";
@@ -306,20 +258,22 @@ export async function POST(req: NextRequest) {
             await checkinTool(tenantId, myTools[0].tool, phone);
             reply = `${myTools[0].tool} — returned. ✓`;
           } else {
-            const list = myTools.map((t) => `- ${t.tool}`).join("\n");
+            const list = myTools
+              .map((t, i) => `${i + 1}) ${t.tool}`)
+              .join("\n");
             reply = `Which tool are you returning?\n${list}`;
           }
           break;
         }
 
-        const checkinMatch = findMatchingCheckout(parsed.tool, myTools);
+        const checkinMatch = findCheckoutByToolName(parsed.tool, myTools);
 
         if (checkinMatch) {
           await checkinTool(tenantId, checkinMatch.tool, phone);
           reply = `${checkinMatch.tool} — returned. ✓`;
         } else {
           const list = myTools.map((t) => `- ${t.tool}`).join("\n");
-          reply = `You don't have a tool matching "${parsed.tool}" checked out. Your tools:\n${list}`;
+          reply = `You don't have "${parsed.tool}" checked out. Your tools:\n${list}`;
         }
         break;
       }
@@ -327,22 +281,15 @@ export async function POST(req: NextRequest) {
       // ── Status queries ────────────────────────────────────────────
       case "status": {
         if (parsed.tool) {
-          const q = parsed.tool.toLowerCase();
-          const matches = allCheckouts.filter(
-            (c) =>
-              c.tool.toLowerCase().includes(q) ||
-              q.includes(c.tool.toLowerCase())
+          const match = allCheckouts.find(
+            (c) => c.tool.toLowerCase() === parsed.tool!.toLowerCase()
           );
 
-          if (matches.length === 0) {
-            reply = `No one has anything matching "${parsed.tool}" checked out.`;
+          if (match) {
+            const since = formatTime(match.checkedOutAt);
+            reply = `${match.person} has ${match.tool} (since ${since})`;
           } else {
-            reply = matches
-              .map((c) => {
-                const since = formatTime(c.checkedOutAt);
-                return `${c.person} has ${c.tool} (since ${since})`;
-              })
-              .join("\n");
+            reply = `${parsed.tool} is available — no one has it checked out.`;
           }
         } else {
           const isAskingAboutSelf =
@@ -369,10 +316,44 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // ── Availability ──────────────────────────────────────────────
+      case "availability": {
+        const checkedOutNames = new Set(
+          allCheckouts.map((c) => c.tool.toLowerCase())
+        );
+        const availableTools = knownTools.filter(
+          (t) => !checkedOutNames.has(t.name.toLowerCase())
+        );
+
+        if (parsed.tool) {
+          const isOut = checkedOutNames.has(parsed.tool.toLowerCase());
+          if (isOut) {
+            const who = allCheckouts.find(
+              (c) => c.tool.toLowerCase() === parsed.tool!.toLowerCase()
+            );
+            reply = `${parsed.tool} is not available — ${who?.person} has it.`;
+          } else {
+            reply = `${parsed.tool} is available. Want to grab it?`;
+          }
+        } else {
+          if (availableTools.length === 0) {
+            reply = "Everything is checked out right now.";
+          } else {
+            const list = availableTools
+              .map((t) => `- ${t.name}`)
+              .join("\n");
+            reply = `Available tools:\n${list}`;
+          }
+        }
+        break;
+      }
+
       // ── Confirm (yes/yeah in response to disambiguation) ──────────
       case "confirm": {
         if (needsGroup) {
-          const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+          const list = tenant.groupNames
+            .map((g, i) => `${i + 1}) ${g}`)
+            .join("\n");
           reply = `Which group are you with?\n${list}`;
           break;
         }
@@ -393,7 +374,11 @@ export async function POST(req: NextRequest) {
           choices.push(match[1]);
         }
 
-        if (choices.length === 1 || (choices.length === 0 && lastBotMsg.content.includes("Do you mean"))) {
+        if (
+          choices.length === 1 ||
+          (choices.length === 0 &&
+            lastBotMsg.content.includes("Do you mean"))
+        ) {
           const doYouMeanMatch = lastBotMsg.content.match(
             /Do you mean (?:the )?(.+)\?/i
           );
@@ -402,20 +387,26 @@ export async function POST(req: NextRequest) {
             : choices[0] ?? null;
 
           if (toolName && isRegistered) {
-            const catalogTool = findMatchingTools(toolName, knownTools);
-            if (catalogTool.length === 1) {
+            const catalogTool = findToolByName(toolName, knownTools);
+            if (catalogTool) {
               const conflict = allCheckouts.find(
                 (c) =>
-                  c.tool.toLowerCase() === catalogTool[0].name.toLowerCase()
+                  c.tool.toLowerCase() === catalogTool.name.toLowerCase()
               );
               if (conflict) {
                 reply =
                   conflict.phone === phone
-                    ? `You already have ${catalogTool[0].name} checked out.`
-                    : `${catalogTool[0].name} is checked out to ${conflict.person}. Not available.`;
+                    ? `You already have ${catalogTool.name} checked out.`
+                    : `${catalogTool.name} is checked out to ${conflict.person}. Not available.`;
               } else {
-                await checkoutTool(tenantId, catalogTool[0].name, user!.name, phone, user!.group);
-                reply = `${catalogTool[0].name} — checked out to you. ✓`;
+                await checkoutTool(
+                  tenantId,
+                  catalogTool.name,
+                  user!.name,
+                  phone,
+                  user!.group
+                );
+                reply = `${catalogTool.name} — checked out to you. ✓`;
               }
             } else {
               reply = "Not sure what you're confirming. Try again?";
@@ -424,7 +415,8 @@ export async function POST(req: NextRequest) {
             reply = "Not sure what you're confirming. Try again?";
           }
         } else if (choices.length > 1) {
-          reply = "Which number? Reply with the number (e.g. 1, 2, etc.)";
+          reply =
+            "Which number? Reply with the number (e.g. 1, 2, etc.)";
         } else {
           reply = "👍";
         }
@@ -441,7 +433,9 @@ export async function POST(req: NextRequest) {
       case "greeting": {
         if (!isRegistered) {
           if (needsGroup) {
-            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            const list = tenant.groupNames
+              .map((g, i) => `${i + 1}) ${g}`)
+              .join("\n");
             reply = `Hey ${user!.name}. Which group are you with?\n${list}`;
           } else {
             reply = "Hey — looks like you're new. What's your name?";
@@ -461,10 +455,13 @@ export async function POST(req: NextRequest) {
       // ── Unknown / fallback ────────────────────────────────────────
       case "unknown":
       default: {
-        // If the user needs to pick a group and typed a number, match it.
         if (needsGroup) {
           const num = parseInt(body.trim(), 10);
-          if (!isNaN(num) && num > 0 && num <= tenant.groupNames.length) {
+          if (
+            !isNaN(num) &&
+            num > 0 &&
+            num <= tenant.groupNames.length
+          ) {
             const picked = tenant.groupNames[num - 1];
             await setUserGroup(tenantId, phone, picked);
             reply = `${picked} — got it. You're all set. Just text me when you grab or return a tool.`;
@@ -472,7 +469,6 @@ export async function POST(req: NextRequest) {
             return twiml(reply);
           }
 
-          // Try a text match
           const textMatch = tenant.groupNames.find(
             (g) => g.toLowerCase() === body.toLowerCase().trim()
           );
@@ -483,12 +479,15 @@ export async function POST(req: NextRequest) {
             return twiml(reply);
           }
 
-          const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+          const list = tenant.groupNames
+            .map((g, i) => `${i + 1}) ${g}`)
+            .join("\n");
           reply = `Didn't catch that. Which group?\n${list}`;
           await saveMessage(tenantId, phone, "assistant", reply);
           return twiml(reply);
         }
 
+        // Handle numbered replies to previous bot lists
         const num = parseInt(body.trim(), 10);
         if (!isNaN(num) && num > 0) {
           const lastBotMsg = [...history]
@@ -500,34 +499,38 @@ export async function POST(req: NextRequest) {
             const choices: string[] = [];
             let listMatch;
             while (
-              (listMatch = numberedPattern.exec(lastBotMsg.content)) !== null
+              (listMatch = numberedPattern.exec(lastBotMsg.content)) !==
+              null
             ) {
               choices.push(listMatch[1]);
             }
 
             if (num <= choices.length) {
               const selectedName = choices[num - 1];
-              const catalogMatch = findMatchingTools(selectedName, knownTools);
-              if (catalogMatch.length === 1 && isRegistered) {
+              const catalogMatch = findToolByName(
+                selectedName,
+                knownTools
+              );
+              if (catalogMatch && isRegistered) {
                 const conflict = allCheckouts.find(
                   (c) =>
                     c.tool.toLowerCase() ===
-                    catalogMatch[0].name.toLowerCase()
+                    catalogMatch.name.toLowerCase()
                 );
                 if (conflict) {
                   reply =
                     conflict.phone === phone
-                      ? `You already have ${catalogMatch[0].name} checked out.`
-                      : `${catalogMatch[0].name} is checked out to ${conflict.person}. Not available.`;
+                      ? `You already have ${catalogMatch.name} checked out.`
+                      : `${catalogMatch.name} is checked out to ${conflict.person}. Not available.`;
                 } else {
                   await checkoutTool(
                     tenantId,
-                    catalogMatch[0].name,
+                    catalogMatch.name,
                     user!.name,
                     phone,
                     user!.group
                   );
-                  reply = `${catalogMatch[0].name} — checked out to you. ✓`;
+                  reply = `${catalogMatch.name} — checked out to you. ✓`;
                 }
               } else {
                 reply = "Something went wrong. Try again?";
@@ -539,14 +542,16 @@ export async function POST(req: NextRequest) {
 
         if (!isRegistered) {
           if (needsGroup) {
-            const list = tenant.groupNames.map((g, i) => `${i + 1}) ${g}`).join("\n");
+            const list = tenant.groupNames
+              .map((g, i) => `${i + 1}) ${g}`)
+              .join("\n");
             reply = `Which group are you with?\n${list}`;
           } else {
             reply = "Hey — looks like you're new. What's your name?";
           }
         } else {
           reply =
-            "Didn't catch that. You can check out a tool, return one, or ask who has something.";
+            "Didn't catch that. Here's what I can do:\n1) Check out a tool\n2) Return a tool\n3) See what's available\n4) See who has what\n\nJust tell me what you need.";
         }
         break;
       }
@@ -591,7 +596,9 @@ async function handleOnboarding(
   const history = await getRecentMessages("", phone, 4);
   await saveMessage("", phone, "user", body);
 
-  const lastBotMsg = [...history].reverse().find((m) => m.role === "assistant");
+  const lastBotMsg = [...history]
+    .reverse()
+    .find((m) => m.role === "assistant");
   const awaitingCode =
     !lastBotMsg || lastBotMsg.content.includes("join code");
 
@@ -614,7 +621,8 @@ async function handleOnboarding(
     return twiml(reply);
   }
 
-  const reply = "What's your company join code? Your manager will give you this.";
+  const reply =
+    "What's your company join code? Your manager will give you this.";
   await saveMessage("", phone, "assistant", reply);
   return twiml(reply);
 }
