@@ -1,8 +1,8 @@
 export const thClass =
-  "px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-zinc-400 sm:px-4 sm:py-3 sm:text-xs dark:text-zinc-500";
+  "px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-zinc-600 sm:px-4 sm:py-3 sm:text-xs dark:text-zinc-400";
 export const tdClass = "px-3 py-2.5 text-xs sm:px-4 sm:py-3 sm:text-sm";
 export const trClass =
-  "border-t border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/30";
+  "border-t-2 border-zinc-800 hover:bg-amber-100/50 dark:border-zinc-600 dark:hover:bg-zinc-800/50";
 
 export function formatDate(iso: string): string {
   if (!iso) return "—";

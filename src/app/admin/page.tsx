@@ -127,7 +127,7 @@ export default function AdminPage() {
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+        <div className="h-6 w-6 animate-cel-spin border-3 border-zinc-800 border-t-transparent dark:border-zinc-400 dark:border-t-transparent" />
       </div>
     );
   }
@@ -140,29 +140,29 @@ export default function AdminPage() {
         </div>
         <div className="w-full max-w-sm animate-fade-in">
           <div className="mb-8 text-center">
-            <h1 className="text-lg font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+            <h1 className="text-xl font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
               TTMA Admin
             </h1>
-            <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Super-admin access
             </p>
           </div>
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleLogin} className="border-2 border-zinc-800 bg-white p-5 cel-shadow dark:border-zinc-500 dark:bg-zinc-900">
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoFocus
-              className="mb-3 w-full border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:ring-1 focus:ring-accent-muted dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:ring-accent-muted"
+              className="mb-3 w-full border-2 border-zinc-800 bg-white px-3 py-2.5 text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none focus:border-zinc-900 focus:bg-amber-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-400 dark:focus:bg-zinc-700"
             />
             {loginError && (
-              <p className="mb-3 text-sm text-red-500 animate-fade-in">{loginError}</p>
+              <p className="mb-3 border-2 border-red-600 bg-red-100 px-2 py-1.5 text-sm font-bold text-red-600 animate-fade-in dark:border-red-400 dark:bg-red-900/30 dark:text-red-400">{loginError}</p>
             )}
             <button
               type="submit"
               disabled={!password.trim() || loginLoading}
-              className="w-full bg-zinc-900 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="cel-btn-press w-full border-2 border-zinc-800 bg-zinc-900 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-white cel-shadow-sm hover:bg-zinc-700 disabled:opacity-40 dark:border-zinc-500 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
               {loginLoading ? "Signing in..." : "Sign In"}
             </button>
@@ -174,24 +174,24 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <header className="border-b-3 border-zinc-800 bg-white dark:border-zinc-600 dark:bg-zinc-900">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2.5 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+            <span className="text-sm font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
               TTMA
             </span>
-            <span className="text-xs text-zinc-300 dark:text-zinc-700">/</span>
-            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <span className="text-sm font-black text-zinc-300 dark:text-zinc-700">/</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Admin
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={fetchTenants}
-              className="flex h-8 w-8 items-center justify-center border border-zinc-300 bg-zinc-100 text-zinc-600 hover:border-zinc-400 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+              className="cel-btn-press flex h-8 w-8 items-center justify-center border-2 border-zinc-800 bg-white text-zinc-700 cel-shadow-xs hover:bg-amber-100 dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               title="Refresh"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
               </svg>
             </button>
@@ -201,7 +201,7 @@ export default function AdminPage() {
                 document.cookie = "ttma-superadmin=; path=/; max-age=0";
                 setAuthed(false);
               }}
-              className="flex h-8 items-center border border-zinc-300 bg-zinc-100 px-2.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:border-zinc-400 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+              className="cel-btn-press flex h-8 items-center border-2 border-zinc-800 bg-white px-2.5 text-[10px] font-bold uppercase tracking-wide text-zinc-700 cel-shadow-xs hover:bg-amber-100 dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
             >
               Logout
             </button>
@@ -211,10 +211,10 @@ export default function AdminPage() {
 
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <h2 className="text-xs font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
             Tenants{" "}
             {tenants.length > 0 && (
-              <span className="ml-1 text-zinc-400 dark:text-zinc-600">
+              <span className="ml-1 border-2 border-zinc-800 bg-zinc-100 px-1.5 py-0.5 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                 {tenants.length}
               </span>
             )}
@@ -224,7 +224,7 @@ export default function AdminPage() {
               setShowCreate(!showCreate);
               setEditingId(null);
             }}
-            className="bg-zinc-900 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="cel-btn-press border-2 border-zinc-800 bg-zinc-900 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white cel-shadow-sm hover:bg-zinc-700 dark:border-zinc-500 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
             {showCreate ? "Cancel" : "Add Tenant"}
           </button>
@@ -241,14 +241,14 @@ export default function AdminPage() {
 
         {loading && tenants.length === 0 ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+            <div className="h-6 w-6 animate-cel-spin border-3 border-zinc-800 border-t-transparent dark:border-zinc-400 dark:border-t-transparent" />
           </div>
         ) : tenants.length === 0 ? (
-          <div className="border border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          <div className="border-2 border-zinc-800 bg-white px-4 py-8 text-center text-sm font-medium text-zinc-500 cel-shadow dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
             No tenants yet. Create your first one.
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {tenants.map((t) => (
               <TenantRow
                 key={t.id}
@@ -264,10 +264,10 @@ export default function AdminPage() {
         {/* Contact submissions */}
         <div className="mt-10">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h2 className="text-xs font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
               Contact Submissions{" "}
               {contacts.length > 0 && (
-                <span className="ml-1 text-zinc-400 dark:text-zinc-600">
+                <span className="ml-1 border-2 border-zinc-800 bg-zinc-100 px-1.5 py-0.5 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                   {contacts.length}
                 </span>
               )}
@@ -275,7 +275,7 @@ export default function AdminPage() {
             <button
               onClick={fetchContacts}
               disabled={contactsLoading}
-              className="text-[10px] font-medium uppercase tracking-wide text-zinc-400 hover:text-zinc-600 disabled:opacity-50 dark:hover:text-zinc-300"
+              className="cel-btn-press text-[10px] font-bold uppercase tracking-wide text-zinc-500 hover:text-zinc-800 disabled:opacity-50 dark:hover:text-zinc-200"
             >
               {contactsLoading ? "Loading..." : "Refresh"}
             </button>
@@ -283,48 +283,48 @@ export default function AdminPage() {
 
           {contactsLoading && contacts.length === 0 ? (
             <div className="flex items-center justify-center py-12">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+              <div className="h-6 w-6 animate-cel-spin border-3 border-zinc-800 border-t-transparent dark:border-zinc-400 dark:border-t-transparent" />
             </div>
           ) : contacts.length === 0 ? (
-            <div className="border border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            <div className="border-2 border-zinc-800 bg-white px-4 py-8 text-center text-sm font-medium text-zinc-500 cel-shadow dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
               No contact submissions yet.
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {contacts.map((c) => (
                 <div
                   key={c.id}
-                  className="border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900"
+                  className="border-2 border-zinc-800 bg-white px-4 py-3 cel-shadow dark:border-zinc-600 dark:bg-zinc-900"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                           {c.company}
                         </p>
-                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                           {c.name}
                         </span>
                         <a
                           href={`mailto:${c.email}`}
-                          className="text-xs text-zinc-400 underline decoration-zinc-300 hover:text-zinc-600 dark:text-zinc-500 dark:decoration-zinc-700 dark:hover:text-zinc-300"
+                          className="text-xs font-medium text-zinc-500 underline decoration-2 decoration-zinc-300 hover:text-zinc-800 dark:text-zinc-400 dark:decoration-zinc-600 dark:hover:text-zinc-200"
                         >
                           {c.email}
                         </a>
                       </div>
                       {c.message && (
-                        <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        <p className="mt-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                           {c.message}
                         </p>
                       )}
-                      <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-600">
+                      <p className="mt-1 text-[10px] font-bold text-zinc-400 dark:text-zinc-600">
                         {formatDate(c.createdAt)}
                       </p>
                     </div>
                     <button
                       onClick={() => handleDeleteContact(c.id)}
                       disabled={deletingContactId === c.id}
-                      className="shrink-0 px-2 py-1 text-[10px] uppercase tracking-wide text-zinc-400 hover:text-red-500 disabled:opacity-50 dark:hover:text-red-400"
+                      className="cel-btn-press shrink-0 border-2 border-zinc-300 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400 hover:border-red-600 hover:bg-red-100 hover:text-red-600 disabled:opacity-50 dark:border-zinc-600 dark:hover:border-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-400"
                     >
                       {deletingContactId === c.id ? "..." : "Dismiss"}
                     </button>
@@ -391,12 +391,12 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
   }
 
   const inputClass =
-    "w-full border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:ring-1 focus:ring-accent-muted dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:ring-accent-muted";
+    "w-full border-2 border-zinc-800 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none focus:border-zinc-900 focus:bg-amber-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-400 dark:focus:bg-zinc-700";
   const labelClass =
-    "block text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1";
+    "block text-[10px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1";
 
   return (
-    <div className="mb-4 border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="mb-4 border-2 border-zinc-800 bg-white p-4 cel-shadow dark:border-zinc-600 dark:bg-zinc-900">
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -412,7 +412,7 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
           <div>
             <label className={labelClass}>URL Slug</label>
             <div className="flex items-center gap-0">
-              <span className="border border-r-0 border-zinc-300 bg-zinc-100 px-2 py-2 text-xs text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500">
+              <span className="border-2 border-r-0 border-zinc-800 bg-zinc-100 px-2 py-2 text-xs font-bold text-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-500">
                 /dashboard/
               </span>
               <input
@@ -420,7 +420,7 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
                 value={slug}
                 onChange={(e) => handleSlugChange(e.target.value)}
                 placeholder="acme-construction"
-                className={`${inputClass} rounded-l-none`}
+                className={inputClass}
               />
             </div>
           </div>
@@ -433,7 +433,7 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
               placeholder="ACME"
               className={inputClass}
             />
-            <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
+            <p className="mt-1 text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
               Workers text this code to join via WhatsApp
             </p>
           </div>
@@ -459,11 +459,11 @@ function CreateTenantForm({ onCreated }: { onCreated: () => void }) {
             />
           </div>
         </div>
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="border-2 border-red-600 bg-red-100 px-2 py-1.5 text-sm font-bold text-red-600 dark:border-red-400 dark:bg-red-900/30 dark:text-red-400">{error}</p>}
         <button
           type="submit"
           disabled={!name.trim() || !slug.trim() || !joinCode.trim() || !adminPw || !dashPw || saving}
-          className="bg-zinc-900 px-4 py-2 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="cel-btn-press border-2 border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white cel-shadow-sm hover:bg-zinc-700 disabled:opacity-40 dark:border-zinc-500 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           {saving ? "Creating..." : "Create Tenant"}
         </button>
@@ -486,44 +486,44 @@ function TenantRow({
   onUpdated: () => void;
 }) {
   return (
-    <div className="border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="border-2 border-zinc-800 bg-white cel-shadow dark:border-zinc-600 dark:bg-zinc-900">
       <div
-        className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30"
+        className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-amber-50 dark:hover:bg-zinc-800/50"
         onClick={onToggle}
       >
         <div className="flex items-center gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                 {tenant.name}
               </p>
               {tenant.joinCode && (
-                <span className="bg-zinc-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                <span className="border-2 border-zinc-800 bg-zinc-100 px-1.5 py-0.5 text-[10px] font-mono font-bold text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                   {tenant.joinCode}
                 </span>
               )}
             </div>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+            <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
               /dashboard/{tenant.slug}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span
-            className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+            className={`border-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
               tenant.status === "active"
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500"
+                ? "border-emerald-600 bg-emerald-100 text-emerald-700 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-400"
+                : "border-zinc-400 bg-zinc-200 text-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-500"
             }`}
           >
             {tenant.status}
           </span>
           <svg
-            className={`h-4 w-4 text-zinc-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-zinc-600 transition-transform dark:text-zinc-400 ${expanded ? "rotate-180" : ""}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            strokeWidth={2}
+            strokeWidth={2.5}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
           </svg>
@@ -626,12 +626,12 @@ function TenantEditPanel({
   }
 
   const inputClass =
-    "w-full border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-accent focus:ring-1 focus:ring-accent-muted dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-accent dark:focus:ring-accent-muted";
+    "w-full border-2 border-zinc-800 bg-white px-3 py-2 text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none focus:border-zinc-900 focus:bg-amber-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-400 dark:focus:bg-zinc-700";
   const labelClass =
-    "block text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1";
+    "block text-[10px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1";
 
   return (
-    <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
+    <div className="border-t-2 border-zinc-800 px-4 py-4 dark:border-zinc-600">
       <div className="mb-3">
         <label className={labelClass}>Dashboard Link</label>
         <div className="flex gap-2">
@@ -645,7 +645,7 @@ function TenantEditPanel({
           />
           <button
             onClick={() => navigator.clipboard.writeText(dashboardUrl)}
-            className="shrink-0 border border-zinc-300 bg-zinc-100 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+            className="cel-btn-press shrink-0 border-2 border-zinc-800 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-zinc-700 cel-shadow-xs hover:bg-amber-100 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
           >
             Copy
           </button>
@@ -665,14 +665,14 @@ function TenantEditPanel({
         <div>
           <label className={labelClass}>URL Slug</label>
           <div className="flex items-center gap-0">
-            <span className="border border-r-0 border-zinc-300 bg-zinc-100 px-2 py-2 text-xs text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500">
+            <span className="border-2 border-r-0 border-zinc-800 bg-zinc-100 px-2 py-2 text-xs font-bold text-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-500">
               /dashboard/
             </span>
             <input
               type="text"
               value={slug}
               onChange={(e) => handleSlugChange(e.target.value)}
-              className={`${inputClass} rounded-l-none`}
+              className={inputClass}
             />
           </div>
         </div>
@@ -684,7 +684,7 @@ function TenantEditPanel({
             onChange={(e) => handleJoinCodeChange(e.target.value)}
             className={inputClass}
           />
-          <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
+          <p className="mt-1 text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
             Workers text this code to join via WhatsApp
           </p>
         </div>
@@ -709,7 +709,7 @@ function TenantEditPanel({
         </div>
       </div>
 
-      <div className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
+      <div className="mt-3 text-xs font-bold text-zinc-400 dark:text-zinc-500">
         Created {formatDate(tenant.createdAt)}
         {tenant.groupsEnabled && (
           <span className="ml-2">
@@ -723,24 +723,24 @@ function TenantEditPanel({
           <button
             onClick={handleSave}
             disabled={saving || !slug.trim()}
-            className="bg-zinc-900 px-4 py-2 text-xs font-medium uppercase tracking-wide text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="cel-btn-press border-2 border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white cel-shadow-sm hover:bg-zinc-700 disabled:opacity-40 dark:border-zinc-500 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
             {saving ? "Saving..." : "Save"}
           </button>
           <button
             onClick={handleToggleStatus}
             disabled={saving}
-            className={`border px-4 py-2 text-xs font-medium uppercase tracking-wide disabled:opacity-40 ${
+            className={`cel-btn-press border-2 px-4 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40 ${
               tenant.status === "active"
-                ? "border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10"
-                : "border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500/50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                ? "border-red-600 text-red-600 hover:bg-red-100 dark:border-red-400 dark:text-red-400 dark:hover:bg-red-500/10"
+                : "border-emerald-600 text-emerald-600 hover:bg-emerald-100 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
             }`}
           >
             {tenant.status === "active" ? "Disable" : "Enable"}
           </button>
           {saved && (
-            <span className="text-xs text-emerald-600 animate-fade-in dark:text-emerald-400">
-              Saved.
+            <span className="border-2 border-emerald-600 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 animate-fade-in dark:border-emerald-400 dark:bg-emerald-900/30 dark:text-emerald-400">
+              Saved!
             </span>
           )}
         </div>
@@ -748,17 +748,17 @@ function TenantEditPanel({
         <div className="flex items-center gap-2">
           {confirmDelete ? (
             <>
-              <span className="text-xs text-red-500">Are you sure?</span>
+              <span className="text-xs font-bold text-red-600 dark:text-red-400">Are you sure?</span>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-red-600 hover:bg-red-100 disabled:opacity-50 dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+                className="cel-btn-press border-2 border-red-600 bg-red-100 px-3 py-2 text-xs font-bold uppercase tracking-wide text-red-600 cel-shadow-xs hover:bg-red-200 disabled:opacity-50 dark:border-red-400 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
               >
                 {deleting ? "Deleting..." : "Yes, Delete"}
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
               >
                 Cancel
               </button>
@@ -766,7 +766,7 @@ function TenantEditPanel({
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="px-3 py-2 text-[10px] uppercase tracking-wide text-zinc-400 hover:text-red-500 dark:hover:text-red-400"
+              className="cel-btn-press px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
             >
               Delete
             </button>

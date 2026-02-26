@@ -1,8 +1,8 @@
 export function LoadingState() {
   return (
     <div className="flex flex-col items-center gap-3 py-20">
-      <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
-      <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading...</p>
+      <div className="h-6 w-6 animate-cel-spin border-3 border-zinc-800 border-t-transparent dark:border-zinc-400 dark:border-t-transparent" />
+      <p className="text-sm font-bold text-zinc-500 dark:text-zinc-400">Loading...</p>
     </div>
   );
 }

@@ -9,12 +9,14 @@ export default function DashboardIndexPage() {
         <ThemeToggle />
       </div>
       <div className="w-full max-w-sm text-center animate-fade-in">
-        <h1 className="text-lg font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-          TTMA
-        </h1>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Use the link your admin sent you to access your dashboard.
-        </p>
+        <div className="border-2 border-zinc-800 bg-white p-8 cel-shadow dark:border-zinc-500 dark:bg-zinc-900">
+          <h1 className="text-xl font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+            TTMA
+          </h1>
+          <p className="mt-2 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            Use the link your admin sent you to access your dashboard.
+          </p>
+        </div>
       </div>
     </div>
   );

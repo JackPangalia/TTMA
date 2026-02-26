@@ -23,7 +23,7 @@ export function DashboardHeader({
     <header
       className={`sticky top-0 z-20 transition-colors duration-200 ${
         scrolled
-          ? "border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80"
+          ? "border-b-3 border-zinc-800 bg-white dark:border-zinc-600 dark:bg-zinc-900"
           : ""
       }`}
     >
@@ -31,36 +31,36 @@ export function DashboardHeader({
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="text-sm font-bold uppercase tracking-wider text-zinc-900 hover:opacity-80 dark:text-zinc-100"
+            className="text-sm font-black uppercase tracking-wider text-zinc-900 hover:opacity-80 dark:text-zinc-100"
           >
             TTMA
           </Link>
-          <span className="hidden text-xs text-zinc-300 sm:inline dark:text-zinc-700">/</span>
-          <span className="hidden text-xs font-medium uppercase tracking-wide text-zinc-500 sm:inline dark:text-zinc-400">
+          <span className="hidden text-sm font-black text-zinc-300 sm:inline dark:text-zinc-700">/</span>
+          <span className="hidden text-xs font-bold uppercase tracking-wide text-zinc-500 sm:inline dark:text-zinc-400">
             Dashboard
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span
-            className={`px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+            className={`border-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
               role === "admin"
-                ? "bg-accent-muted text-accent-fg dark:bg-accent-dim dark:text-accent"
-                : "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                ? "border-zinc-800 bg-zinc-900 text-white dark:border-zinc-500 dark:bg-zinc-100 dark:text-zinc-900"
+                : "border-zinc-400 bg-zinc-200 text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
             }`}
           >
             {role === "admin" ? "Admin" : "Viewer"}
           </span>
           {lastUpdatedLabel && (
-            <span className="hidden text-xs text-zinc-400 sm:inline dark:text-zinc-600">
+            <span className="hidden text-xs font-bold text-zinc-400 sm:inline dark:text-zinc-600">
               {lastUpdatedLabel}
             </span>
           )}
           <button
             onClick={onRefresh}
-            className="flex h-8 w-8 items-center justify-center border border-zinc-300 bg-zinc-100 text-zinc-600 hover:border-zinc-400 hover:bg-zinc-200 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+            className="cel-btn-press flex h-8 w-8 items-center justify-center border-2 border-zinc-800 bg-white text-zinc-700 cel-shadow-xs hover:bg-amber-100 dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
             title="Refresh"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -74,7 +74,7 @@ export function DashboardHeader({
               document.cookie = "ttma-auth=; path=/; max-age=0";
               onLogout();
             }}
-            className="flex h-8 items-center border border-zinc-300 bg-zinc-100 px-2.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:border-zinc-400 hover:bg-zinc-200 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+            className="cel-btn-press flex h-8 items-center border-2 border-zinc-800 bg-white px-2.5 text-[10px] font-bold uppercase tracking-wide text-zinc-700 cel-shadow-xs hover:bg-amber-100 dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
           >
             Logout
           </button>

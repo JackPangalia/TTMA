@@ -49,7 +49,7 @@ export function Dashboard({ role, tenantId, onLogout }: DashboardProps) {
           <DashboardTabs role={role} tab={tab} onTabChange={setTab} />
         )}
 
-        <div className="overflow-hidden border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="overflow-hidden border-2 border-zinc-800 bg-white cel-shadow dark:border-zinc-600 dark:bg-zinc-900">
           {tab === "tools" && (
             <LogView
               role={role}

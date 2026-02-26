@@ -26,7 +26,7 @@ export default function TenantDashboardPage({
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+        <div className="h-6 w-6 animate-cel-spin border-3 border-zinc-800 border-t-transparent dark:border-zinc-400 dark:border-t-transparent" />
       </div>
     );
   }

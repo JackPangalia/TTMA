@@ -7,6 +7,8 @@
   --color-accent-dim: oklch(100% 0 0 / 0.10);
   --color-accent-muted: oklch(0% 0 0 / 0.06);
   --color-accent-fg: oklch(0% 0 0);
+  --color-cel-shadow: rgba(0, 0, 0, 0.85);
+  --color-cel-shadow-sm: rgba(0, 0, 0, 0.7);
 }
 
 .dark {
@@ -14,47 +16,49 @@
   --color-accent-dim: oklch(100% 0 0 / 0.10);
   --color-accent-muted: oklch(100% 0 0 / 0.06);
   --color-accent-fg: oklch(100% 0 0);
+  --color-cel-shadow: rgba(255, 255, 255, 0.12);
+  --color-cel-shadow-sm: rgba(255, 255, 255, 0.08);
 }
 
 ::selection {
-  background-color: oklch(0% 0 0 / 0.15);
+  background-color: oklch(65% 0.25 280 / 0.3);
 }
 .dark ::selection {
-  background-color: oklch(100% 0 0 / 0.20);
+  background-color: oklch(75% 0.2 280 / 0.35);
 }
 
-/* Industrial grid background */
+/* Cel-shaded crosshatch grid */
 .bg-grid {
   background-image:
-    linear-gradient(to right, oklch(55% 0 0 / 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, oklch(55% 0 0 / 0.07) 1px, transparent 1px);
-  background-size: 48px 48px;
+    linear-gradient(to right, oklch(30% 0 0 / 0.08) 2px, transparent 2px),
+    linear-gradient(to bottom, oklch(30% 0 0 / 0.08) 2px, transparent 2px);
+  background-size: 40px 40px;
 }
 .dark .bg-grid {
   background-image:
-    linear-gradient(to right, oklch(75% 0 0 / 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, oklch(75% 0 0 / 0.04) 1px, transparent 1px);
+    linear-gradient(to right, oklch(80% 0 0 / 0.06) 2px, transparent 2px),
+    linear-gradient(to bottom, oklch(80% 0 0 / 0.06) 2px, transparent 2px);
 }
 
-/* Noise grain overlay */
+/* Halftone dot overlay (cel-shade aesthetic) */
 .bg-noise::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.3;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 256px 256px;
+  opacity: 0.04;
+  background-image: radial-gradient(circle, #000 1px, transparent 1px);
+  background-size: 6px 6px;
 }
 .dark .bg-noise::after {
-  opacity: 0.15;
+  opacity: 0.06;
+  background-image: radial-gradient(circle, #fff 0.5px, transparent 0.5px);
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -62,34 +66,61 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #a1a1aa;
+  background: #27272a;
+  border: 2px solid transparent;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: #a1a1aa;
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.35s ease-out both;
+  animation: fade-in 0.3s ease-out both;
 }
 
-.animate-fade-in-1 { animation: fade-in 0.5s ease-out 0.1s both; }
-.animate-fade-in-2 { animation: fade-in 0.5s ease-out 0.2s both; }
-.animate-fade-in-3 { animation: fade-in 0.5s ease-out 0.3s both; }
-.animate-fade-in-4 { animation: fade-in 0.5s ease-out 0.4s both; }
-.animate-fade-in-5 { animation: fade-in 0.5s ease-out 0.5s both; }
-.animate-fade-in-6 { animation: fade-in 0.5s ease-out 0.6s both; }
+.animate-fade-in-1 { animation: fade-in 0.4s ease-out 0.1s both; }
+.animate-fade-in-2 { animation: fade-in 0.4s ease-out 0.2s both; }
+.animate-fade-in-3 { animation: fade-in 0.4s ease-out 0.3s both; }
+.animate-fade-in-4 { animation: fade-in 0.4s ease-out 0.4s both; }
+.animate-fade-in-5 { animation: fade-in 0.4s ease-out 0.5s both; }
+.animate-fade-in-6 { animation: fade-in 0.4s ease-out 0.6s both; }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.4); }
 }
 
 .animate-pulse-dot {
-  animation: pulse-dot 2s ease-in-out infinite;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Cel-shaded hard shadow utilities */
+.cel-shadow {
+  box-shadow: 4px 4px 0px var(--color-cel-shadow);
+}
+.cel-shadow-sm {
+  box-shadow: 3px 3px 0px var(--color-cel-shadow);
+}
+.cel-shadow-xs {
+  box-shadow: 2px 2px 0px var(--color-cel-shadow-sm);
+}
+
+/* Active/pressed state for cel buttons */
+.cel-btn-press:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px var(--color-cel-shadow-sm) !important;
+}
+
+/* Cel-shaded spinner */
+@keyframes cel-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-cel-spin {
+  animation: cel-spin 0.8s steps(8) infinite;
 }
