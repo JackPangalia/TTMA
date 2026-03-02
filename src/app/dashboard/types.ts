@@ -1,5 +1,5 @@
 export type Role = "admin" | "worker";
-export type Tab = "tools" | "crew" | "settings";
+export type Tab = "overview" | "tools" | "stats" | "crew" | "settings";
 export type Filter = "all" | "out" | "available";
 
 export interface LogRow {

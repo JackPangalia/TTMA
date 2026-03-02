@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { getTenantById } from "@/lib/tenants";
+import { getTenantById, getTenantByName } from "@/lib/tenants";
 
 export type Role = "admin" | "worker";
 
@@ -79,26 +79,31 @@ export function isSuperAdminRequest(req: NextRequest): boolean {
 
 /**
  * POST /api/auth
- * Accepts { password: string, tenantId: string }.
- * Checks against the tenant's admin and dashboard passwords.
+ * Accepts { password, tenantId } or { password, company }.
+ * Looks up the tenant by slug (tenantId) or display name (company),
+ * then checks against the tenant's admin and dashboard passwords.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const password = body.password ?? "";
     const tenantId = body.tenantId ?? "";
+    const company = body.company ?? "";
 
-    if (!tenantId) {
+    if (!tenantId && !company) {
       return NextResponse.json(
-        { error: "Tenant ID is required" },
+        { error: "Company name or tenant ID is required" },
         { status: 400 }
       );
     }
 
-    const tenant = await getTenantById(tenantId);
+    const tenant = tenantId
+      ? await getTenantById(tenantId)
+      : await getTenantByName(company);
+
     if (!tenant || tenant.status !== "active") {
       return NextResponse.json(
-        { error: "Invalid tenant" },
+        { error: "Company not found" },
         { status: 404 }
       );
     }
@@ -121,7 +126,11 @@ export async function POST(req: NextRequest) {
     const secret = role === "admin" ? tenant.adminPassword : tenant.dashboardPassword;
     const token = generateToken(role, secret);
 
-    const response = NextResponse.json({ ok: true, role });
+    const response = NextResponse.json({
+      ok: true,
+      role,
+      tenantId: tenant.slug,
+    });
     response.cookies.set("ttma-auth", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

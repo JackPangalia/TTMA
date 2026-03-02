@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Tenant {
@@ -556,6 +557,22 @@ function TenantEditPanel({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const linkRef = useRef<HTMLInputElement>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
+  const whatsappLink = waNumber
+    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(joinCode)}`
+    : "";
+
+  function downloadQr() {
+    const canvas = qrRef.current?.querySelector("canvas");
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${tenant.slug}-qr-code.png`;
+    a.click();
+  }
 
   function handleSlugChange(value: string) {
     setSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-"));
@@ -651,6 +668,43 @@ function TenantEditPanel({
           </button>
         </div>
       </div>
+
+      {whatsappLink && (
+        <div className="mb-3 border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+          <label className={labelClass}>WhatsApp QR Code</label>
+          <p className="mb-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+            Workers scan this to open WhatsApp with the join code pre-filled. Print it and post it on site.
+          </p>
+          <div className="flex items-start gap-4">
+            <div ref={qrRef} className="shrink-0 rounded bg-white p-2">
+              <QRCodeCanvas value={whatsappLink} size={140} />
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
+              <input
+                type="text"
+                readOnly
+                value={whatsappLink}
+                className={`${inputClass} bg-white text-xs dark:bg-zinc-800`}
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigator.clipboard.writeText(whatsappLink)}
+                  className="border border-zinc-300 bg-zinc-100 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                >
+                  Copy Link
+                </button>
+                <button
+                  onClick={downloadQr}
+                  className="border border-zinc-300 bg-zinc-100 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                >
+                  Download QR
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>

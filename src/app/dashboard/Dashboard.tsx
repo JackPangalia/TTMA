@@ -6,6 +6,13 @@ import { DashboardTabs } from "./components/DashboardTabs";
 import { LogView } from "./views/LogView";
 import { CrewManager } from "./views/CrewManager";
 import { SettingsView } from "./views/SettingsView";
+import { OverviewView } from "./views/OverviewView";
+
+import dynamic from "next/dynamic";
+const DashboardStats = dynamic(
+  () => import("./components/DashboardStats").then((m) => m.DashboardStats),
+  { ssr: false }
+);
 import type { Role, Tab } from "./types";
 
 interface DashboardProps {
@@ -15,7 +22,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ role, tenantId, onLogout }: DashboardProps) {
-  const [tab, setTab] = useState<Tab>("tools");
+  const [tab, setTab] = useState<Tab>(role === "admin" ? "overview" : "tools");
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [scrolled, setScrolled] = useState(false);
@@ -49,22 +56,36 @@ export function Dashboard({ role, tenantId, onLogout }: DashboardProps) {
           <DashboardTabs role={role} tab={tab} onTabChange={setTab} />
         )}
 
-        <div className="overflow-hidden border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          {tab === "tools" && (
-            <LogView
-              role={role}
-              tenantId={tenantId}
-              refreshKey={refreshKey}
-              onRefreshed={() => setLastUpdatedLabel("just now")}
-            />
-          )}
-          {tab === "crew" && (
-            <CrewManager tenantId={tenantId} refreshKey={refreshKey} />
-          )}
-          {tab === "settings" && (
-            <SettingsView tenantId={tenantId} refreshKey={refreshKey} />
-          )}
-        </div>
+        {tab === "overview" && role === "admin" && (
+          <OverviewView
+            tenantId={tenantId}
+            refreshKey={refreshKey}
+            onNavigate={setTab}
+          />
+        )}
+
+        {tab === "stats" && (
+          <DashboardStats tenantId={tenantId} refreshKey={refreshKey} />
+        )}
+
+        {(tab === "tools" || tab === "crew" || tab === "settings") && (
+          <div className="overflow-hidden border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            {tab === "tools" && (
+              <LogView
+                role={role}
+                tenantId={tenantId}
+                refreshKey={refreshKey}
+                onRefreshed={() => setLastUpdatedLabel("just now")}
+              />
+            )}
+            {tab === "crew" && (
+              <CrewManager tenantId={tenantId} refreshKey={refreshKey} />
+            )}
+            {tab === "settings" && (
+              <SettingsView tenantId={tenantId} refreshKey={refreshKey} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

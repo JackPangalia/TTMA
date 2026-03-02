@@ -8,6 +8,7 @@ const activeCol = () => db.collection("activeCheckouts");
 const historyCol = () => db.collection("history");
 const toolsCol = () => db.collection("tools");
 const conversationsCol = () => db.collection("conversations");
+const subscriptionsCol = () => db.collection("subscriptions");
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -91,6 +92,49 @@ export async function setUserGroup(
   group: string
 ): Promise<void> {
   await usersCol().doc(`${tenantId}_${phone}`).update({ group });
+}
+
+export async function unsubscribePhone(phone: string): Promise<void> {
+  const usersSnapshot = await usersCol().where("phone", "==", phone).get();
+  const activeSnapshot = await activeCol().where("phone", "==", phone).get();
+
+  const tenantIds = new Set<string>();
+
+  for (const userDoc of usersSnapshot.docs) {
+    const tenantId = userDoc.data().tenantId;
+    if (tenantId) tenantIds.add(tenantId);
+  }
+
+  for (const checkoutDoc of activeSnapshot.docs) {
+    const data = checkoutDoc.data();
+    const tenantId = data.tenantId ?? "";
+    if (tenantId) tenantIds.add(tenantId);
+
+    await historyCol().add({
+      tool: data.tool,
+      person: data.person,
+      phone: data.phone,
+      group: data.group ?? null,
+      tenantId,
+      checkedOutAt: data.checkedOutAt ?? now(),
+      returnedAt: now(),
+    });
+
+    await activeCol().doc(checkoutDoc.id).delete();
+  }
+
+  for (const userDoc of usersSnapshot.docs) {
+    await usersCol().doc(userDoc.id).delete();
+  }
+
+  const deletes: Promise<unknown>[] = [
+    conversationsCol().doc(`onboarding_${phone}`).delete(),
+    subscriptionsCol().doc(phone).delete(),
+  ];
+  for (const tenantId of tenantIds) {
+    deletes.push(conversationsCol().doc(`${tenantId}_${phone}`).delete());
+  }
+  await Promise.all(deletes);
 }
 
 // ── Tool check-out ──────────────────────────────────────────────────

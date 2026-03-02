@@ -31,6 +31,22 @@ export async function getTenantById(id: string): Promise<Tenant | null> {
   return docToTenant(doc);
 }
 
+export async function getTenantByName(
+  name: string
+): Promise<Tenant | null> {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+
+  const snapshot = await tenantsCol()
+    .where("name", "==", trimmed)
+    .where("status", "==", "active")
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) return null;
+  return docToTenant(snapshot.docs[0]);
+}
+
 /**
  * Look up a tenant by its URL slug.
  * The slug is stored as the Firestore doc ID, so this is a direct lookup.

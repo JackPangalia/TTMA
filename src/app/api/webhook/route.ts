@@ -9,6 +9,7 @@ import {
   createPendingUser,
   registerUser,
   setUserGroup,
+  unsubscribePhone,
   checkoutTool,
   checkinTool,
   getActiveCheckouts,
@@ -68,6 +69,14 @@ export async function POST(req: NextRequest) {
 
     if (!phone || !body) {
       return twiml("Couldn't read your message. Try again?");
+    }
+
+    const command = body.toUpperCase();
+    if (command === "UNSUBSCRIBE") {
+      await unsubscribePhone(phone);
+      const reply =
+        "You are unsubscribed and removed from TTMA. Any tools you had are now checked back in. To use TTMA again later, start from the join code.";
+      return twiml(reply);
     }
 
     // ── 1b. Resolve tenant from phone number or onboarding flow ─────
